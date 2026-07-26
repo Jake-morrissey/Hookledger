@@ -63,3 +63,19 @@ Metrics snapshot: Signups 0; revenue 0; local tests 11 passed, 0 failed.
 Validation: node --check server.js and license.js passed; npm test passed with 11 tests; localhost smoke test on port 3002 covered locked state, activation-request creation, signed license issuance, activation, and unlocked fixtures API. 
  
 Next session: connect a real human-owned one-time checkout only if approved, or package the localhost app for easier distribution.
+
+## 2026-07-26 20:10 UTC - Phase 1 free and open-source reset
+
+Stage worked: Phase 1 product direction reset.
+
+What I did: Removed the licensing experiment from the runtime, deleted activation flow files, removed workspace locking, removed disposable-email blocking, converted pricing into a support page, added MIT licensing and funding metadata, and updated docs to position Phase 1 as free and open source.
+
+Decisions: The local licensing system added friction before there was proof of user demand. Free and open source is a better fit for a Phase 1 developer tool, while any real hosted team version should be treated as a separate future product only after usage validates demand.
+
+History/sensitivity review: The private signing key file `private/license-private.pem` was kept out of git and never appeared in committed file lists during this session. The public key and licensing code were committed and are now removed from the working tree. `research.md` and this log do not contain secrets, but they do expose product-strategy thinking and internal iteration history, so review them before making the repository public if you prefer a cleaner public narrative.
+
+Human approval flags: No payment processor connected, no legal doc publishing, no deploy, and no spending occurred.
+
+Metrics snapshot: Signups 0; revenue 0; tests pending rerun after OSS reset.
+
+Next session: verify final tests and smoke flows, replace the sponsor placeholder with the real account, and decide whether to keep or trim internal research/log artifacts before publishing.

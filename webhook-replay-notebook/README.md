@@ -2,23 +2,35 @@
 
 Save, redact, and replay webhook fixtures during development.
 
-HookLedger is a local-first developer tool for testing webhook integrations without recreating the same Stripe, GitHub, Shopify, Clerk, or custom event by hand.
+HookLedger is a fully localhosted, free and open-source developer tool for testing webhook integrations without recreating the same Stripe, GitHub, Shopify, Clerk, or custom event by hand.
 
 ## What it does
 
 - Provides a polished multi-page developer-tool interface.
 - Home page explains the product and target workflow.
 - Workspace page handles fixture creation, redaction preview, replay, import/export, and history.
-- Docs page explains local storage, methods, and redaction behavior.
-- Pricing page is a clearly marked draft only, with no live billing.
+- Docs page explains local storage, methods, and the Phase 1 open-source direction.
+- Support page replaces pricing and points people to sponsor the project.
 - Changelog page summarizes product updates.
 - Saves named fixtures to a local JSON data file.
 - Redacts common secret-like fields before storage.
 - Validates method and target URL before replay.
 
+## Why it is free and open source
+
+Phase 1 is intentionally free and open source. The earlier machine-bound license experiment added friction and complexity before the project had real user demand. Removing it makes the local tool easier to adopt, easier to audit, and more aligned with how developer tools typically spread. If a hosted team product ever becomes worth building, that should be a separate product driven by real usage signals from this free local app.
+
+## Support this project
+
+If HookLedger saves you time, you can sponsor it here:
+
+- GitHub Sponsors: `https://github.com/sponsors/YOUR_GITHUB_USERNAME`
+
+Replace the placeholder username in `.github/FUNDING.yml` and this README before publishing.
+
 ## Guardrails
 
-Do not paste production secrets or sensitive customer data. This MVP is local-first and has no payment, hosting, or account integration.
+Do not paste production secrets or sensitive customer data. This app is localhost-first and does not require account creation, billing, or hosted infrastructure for Phase 1.
 
 ## Run
 
@@ -31,31 +43,24 @@ Open http://localhost:3000.
 
 Data is stored at `data/hookledger.json` and is intentionally ignored by git.
 
-Activated license state is stored at `data/license.json`.
+## Phase 1 scope
 
-The public verification key lives at `keys/public.pem`. The seller-side signing key is kept out of git under `private/license-private.pem`.
-
-To issue a machine-bound license locally after receiving a purchase request blob:
-
-```bash
-node issue-license.mjs "{...request json...}"
-```
-
-## MVP completion scope
-
-Completed local MVP:
+Included now:
 
 - File-backed persistence
 - Fixture CRUD
 - Redaction preview
 - Import/export
 - Replay history
+- Multi-page UI
 - Critical-path tests
+- MIT open-source licensing
 
-Not included until later human checkpoints:
+Deferred to a separate future hosted product, only if usage proves demand:
 
-- Live Stripe/payment setup
-- Hosted production deployment
-- Legal document publishing
-- Customer email or launch posting
-- Paid ads or any budget spend
+- Real authentication
+- Multi-tenant storage
+- Hosted replay targets
+- Team collaboration
+- Billing and subscription logic
+- Sync between local and hosted versions

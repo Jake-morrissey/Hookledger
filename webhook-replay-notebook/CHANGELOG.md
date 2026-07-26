@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0 - 2026-07-26
+
+- Removed the local licensing system and activation flow.
+- Removed machine-bound license verification and seller-side license issuance.
+- Removed disposable-email blocking, since there is no free-trial or signup gate in Phase 1.
+- Made the workspace open by default again.
+- Replaced the pricing page with a support/sponsor page.
+- Added MIT licensing and funding metadata for open-source distribution.
+- Reframed the hosted/team version as a separate future product rather than a modification of the local app.
+
 ## 0.4.0 - 2026-07-26
 
 - Added fully localhosted machine-bound licensing.
