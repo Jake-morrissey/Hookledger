@@ -31,6 +31,16 @@ Open http://localhost:3000.
 
 Data is stored at `data/hookledger.json` and is intentionally ignored by git.
 
+Activated license state is stored at `data/license.json`.
+
+The public verification key lives at `keys/public.pem`. The seller-side signing key is kept out of git under `private/license-private.pem`.
+
+To issue a machine-bound license locally after receiving a purchase request blob:
+
+```bash
+node issue-license.mjs "{...request json...}"
+```
+
 ## MVP completion scope
 
 Completed local MVP:

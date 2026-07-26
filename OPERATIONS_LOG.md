@@ -47,3 +47,19 @@ Metrics snapshot: Signups 0; revenue 0; production errors 0; local tests 7 passe
 Validation: node --check server.js passed; npm test passed with 7 tests; smoke tested /, /workspace, /docs, /pricing, /changelog, and /api/fixtures on http://localhost:3001. 
  
 Next session: If approved, continue with visual refinements, screenshots, or Stage 3 pricing and legal drafts for review.
+ 
+## 2026-07-26 19:39 UTC - Localhost licensing and anti-sharing build 
+ 
+Stage worked: Stage 2 Build extension for local commercial distribution. 
+ 
+What I did: Converted HookLedger into a fully localhosted locked-until-activated app; added local activation page; added request blob generation; blocked disposable email domains; added machine-bound signed license verification; added seller-side offline issue-license.mjs script; updated docs, pricing draft, and changelog; kept workspace APIs locked until activation. 
+ 
+Decisions: Used public-key verification in the app and kept the seller-side private key out of git under private/license-private.pem. Bound licenses to a machine fingerprint to discourage simple file sharing, while noting this is friction rather than perfect DRM. Kept real payment processing out of scope pending explicit human setup and approval. 
+ 
+Human approval flags: No live payment processor connected. No real checkout, no legal doc publishing, no production hosting, no customer messaging, and no budget spend occurred. 
+ 
+Metrics snapshot: Signups 0; revenue 0; local tests 11 passed, 0 failed. 
+ 
+Validation: node --check server.js and license.js passed; npm test passed with 11 tests; localhost smoke test on port 3002 covered locked state, activation-request creation, signed license issuance, activation, and unlocked fixtures API. 
+ 
+Next session: connect a real human-owned one-time checkout only if approved, or package the localhost app for easier distribution.

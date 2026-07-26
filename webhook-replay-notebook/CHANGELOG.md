@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 - 2026-07-26
+
+- Added fully localhosted machine-bound licensing.
+- Added activation request flow with disposable-email blocking.
+- Added signed license verification and locked workspace behavior.
+- Added offline `issue-license.mjs` seller-side issuance script.
+- Updated pricing draft to reflect one-time purchase direction.
+
 ## 0.3.0 - 2026-07-26
 
 - Redesigned the UI with a developer-focused dark visual system.
