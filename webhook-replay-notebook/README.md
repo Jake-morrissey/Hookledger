@@ -1,14 +1,19 @@
-# Webhook Replay Notebook
+# HookLedger
 
-Local-first MVP for saving, editing, and replaying webhook fixtures during development.
+Save, redact, and replay webhook fixtures during development.
+
+HookLedger is a local-first developer tool for testing webhook integrations without recreating the same Stripe, GitHub, Shopify, Clerk, or custom event by hand.
 
 ## What it does
 
 - Paste a captured webhook payload and headers.
-- Save it as a named fixture in local memory.
+- Preview redaction before saving.
+- Save named fixtures to a local JSON data file.
 - Redact common secret-like fields before storage.
-- Replay the fixture to a development endpoint.
-- View request and response history for each replay.
+- Replay fixtures to a development endpoint.
+- View request and response history.
+- Import and export fixture JSON for backup or sharing.
+- Validate method and target URL before replay.
 
 ## Guardrails
 
@@ -23,6 +28,23 @@ npm start
 
 Open http://localhost:3000.
 
-## MVP scope
+Data is stored at `data/hookledger.json` and is intentionally ignored by git.
 
-This version intentionally avoids provider OAuth, live Stripe connections, production deployment, and paid billing. Those belong after human approval checkpoints.
+## MVP completion scope
+
+Completed local MVP:
+
+- File-backed persistence
+- Fixture CRUD
+- Redaction preview
+- Import/export
+- Replay history
+- Critical-path tests
+
+Not included until later human checkpoints:
+
+- Live Stripe/payment setup
+- Hosted production deployment
+- Legal document publishing
+- Customer email or launch posting
+- Paid ads or any budget spend
