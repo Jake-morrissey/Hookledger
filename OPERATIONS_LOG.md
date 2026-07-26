@@ -31,3 +31,19 @@ Metrics snapshot: Signups 0; revenue 0; production errors 0; local tests 7 passe
 Validation: Ran node --check on server.js and core.js; ran npm test with 7 passing tests; started local server on port 3010; fetched homepage, fixtures API, export API, and redaction POST endpoint successfully; stopped local server. 
  
 Next session: Stage 3 draft pricing model and draft legal-doc placeholders for human approval, or connect hosting/domain/Stripe only if the human explicitly chooses to proceed.
+ 
+## 2026-07-26 16:22 UTC - HookLedger multi-page UI redesign 
+ 
+Stage worked: Stage 2 Build polish. 
+ 
+What I did: Redesigned HookLedger with a developer-focused dark visual system and added Home, Workspace, Docs, Pricing draft, and Changelog pages. Moved fixture operations into the Workspace route while keeping existing APIs. Updated README, CHANGELOG, and package version to 0.3.0. 
+ 
+Decisions: Kept pricing as a clearly marked draft because payment setup and live pricing require human approval. Ran the redesigned server on port 3001 because port 3000 was already occupied by another local process. 
+ 
+Human approval flags: No payment processor connected, no live pricing enabled, no legal docs published, no deploy performed, no customer contact, and no spend. 
+ 
+Metrics snapshot: Signups 0; revenue 0; production errors 0; local tests 7 passed, 0 failed. 
+ 
+Validation: node --check server.js passed; npm test passed with 7 tests; smoke tested /, /workspace, /docs, /pricing, /changelog, and /api/fixtures on http://localhost:3001. 
+ 
+Next session: If approved, continue with visual refinements, screenshots, or Stage 3 pricing and legal drafts for review.

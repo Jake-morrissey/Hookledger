@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 - 2026-07-26
+
+- Redesigned the UI with a developer-focused dark visual system.
+- Added multiple routes: Home, Workspace, Docs, Pricing draft, and Changelog.
+- Moved fixture operations into a dedicated workspace page.
+- Added product-positioning content for the target developer audience.
+- Added visible guardrail language to the pricing draft and footer.
+
 ## 0.2.0 - 2026-07-26
 
 - Renamed product to HookLedger.

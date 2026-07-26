@@ -6,14 +6,15 @@ HookLedger is a local-first developer tool for testing webhook integrations with
 
 ## What it does
 
-- Paste a captured webhook payload and headers.
-- Preview redaction before saving.
-- Save named fixtures to a local JSON data file.
-- Redact common secret-like fields before storage.
-- Replay fixtures to a development endpoint.
-- View request and response history.
-- Import and export fixture JSON for backup or sharing.
-- Validate method and target URL before replay.
+- Provides a polished multi-page developer-tool interface.
+- Home page explains the product and target workflow.
+- Workspace page handles fixture creation, redaction preview, replay, import/export, and history.
+- Docs page explains local storage, methods, and redaction behavior.
+- Pricing page is a clearly marked draft only, with no live billing.
+- Changelog page summarizes product updates.
+- Saves named fixtures to a local JSON data file.
+- Redacts common secret-like fields before storage.
+- Validates method and target URL before replay.
 
 ## Guardrails
 
