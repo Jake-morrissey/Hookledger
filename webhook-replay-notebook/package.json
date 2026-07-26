@@ -1,0 +1,1 @@
+{"name":"webhook-replay-notebook","version":"0.1.0","description":"Local-first notebook for saving, editing, and replaying webhook fixtures.","type":"module","scripts":{"start":"node server.js","test":"node --test"},"keywords":["webhook","replay","developer-tools"],"license":"UNLICENSED","private":true}
