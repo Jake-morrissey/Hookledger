@@ -3,7 +3,7 @@
 ## 0.6.0 - 2026-07-26
 
 - Added request body size limit (1 MB) to prevent memory exhaustion.
-- Fixed HTTP error codes: 404 for not found, 422 for validation errors, 500 for server errors.
+- Fixed HTTP error codes: 404 for not found, 400 for validation errors, 413 for oversized bodies.
 - Added graceful shutdown handler (SIGTERM/SIGINT) to persist data before exit.
 - Added `engines` field requiring Node.js >= 18.
 - Added GET /api/fixtures/:id endpoint for fetching a single fixture.
