@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.0 - 2026-07-26
+
+- Added request body size limit (1 MB) to prevent memory exhaustion.
+- Fixed HTTP error codes: 404 for not found, 422 for validation errors, 500 for server errors.
+- Added graceful shutdown handler (SIGTERM/SIGINT) to persist data before exit.
+- Added `engines` field requiring Node.js >= 18.
+- Added GET /api/fixtures/:id endpoint for fetching a single fixture.
+- Added security headers (CSP, X-Content-Type-Options, X-Frame-Options) to HTML responses.
+- Added truncation indicator when replay response body exceeds 5000 chars.
+- Fixed FixtureStore.delete() to skip disk write when fixture ID doesn't exist.
+- Renamed /pricing route to /support to match its label.
+- Removed hardcoded "0 external accounts" metric card from workspace UI.
+- Documented Node.js version requirement in README.
+
 ## 0.5.0 - 2026-07-26
 
 - Removed the local licensing system and activation flow.

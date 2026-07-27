@@ -64,8 +64,7 @@ export class FixtureStore {
 
   importFixtures(fixtures) {
     if (!Array.isArray(fixtures)) throw new Error('Import payload must include a fixtures array');
-    const imported = fixtures.map((fixture) => this.save({ ...fixture, id: fixture.id || crypto.randomUUID() }));
-    return imported;
+    return fixtures.map((fixture) => this.save({ ...fixture, id: fixture.id || crypto.randomUUID() }));
   }
 
   list() {
@@ -80,16 +79,15 @@ export class FixtureStore {
 
   delete(id) {
     const deleted = this.fixtures.delete(id);
-    this.persist();
+    if (deleted) this.persist();
     return deleted;
   }
 
   logReplay(entry) {
-    const replay = { id: crypto.randomUUID(), at: new Date().toISOString(), ...entry };
-    this.replays.unshift(replay);
-    this.replays = this.replays.slice(0, 100);
+    this.replays.unshift({ id: crypto.randomUUID(), at: new Date().toISOString(), ...entry });
+    if (this.replays.length > 100) this.replays.length = 100;
     this.persist();
-    return replay;
+    return this.replays[0];
   }
 
   history() {
@@ -102,23 +100,27 @@ export class FixtureStore {
 }
 
 export function validateHttpUrl(url) {
-  let parsed;
   try {
-    parsed = new URL(url);
-  } catch {
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      throw new Error('Target URL must be a valid http:// or https:// URL');
+    }
+    return parsed;
+  } catch (err) {
+    if (err.message.includes('http')) throw err;
     throw new Error('Target URL must be a valid http:// or https:// URL');
   }
-  if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Target URL must be a valid http:// or https:// URL');
-  return parsed;
 }
 
 export function redact(value, debug = false) {
   if (Array.isArray(value)) return value.map(v => redact(v, debug));
   if (!value || typeof value !== 'object') return value;
+  
   return Object.fromEntries(
     Object.entries(value).map(([key, nested]) => {
       const normalized = key.toLowerCase().replaceAll('-', '_');
-      if (SECRET_KEYS.has(normalized) || SECRET_KEYS.has(key.toLowerCase())) {
+      const isSecret = SECRET_KEYS.has(normalized) || SECRET_KEYS.has(key.toLowerCase());
+      if (isSecret) {
         return [key, debug ? { value: '[REDACTED]', reason: 'secret-field' } : '[REDACTED]'];
       }
       return [key, redact(nested, debug)];
@@ -137,10 +139,12 @@ export async function replayFixture(fixture, targetUrl = fixture.url, fetchImpl 
       body: JSON.stringify(fixture.body ?? {})
     });
     const text = await response.text();
+    const truncated = text.length > 5000;
     return { 
       status: response.status, 
       ok: response.ok, 
-      body: text.slice(0, 5000),
+      body: truncated ? text.slice(0, 5000) : text,
+      truncated,
       error: null
     };
   } catch (err) {
