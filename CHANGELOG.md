@@ -52,7 +52,7 @@
 
 ## 0.1.0 - 2026-07-26
 
-- Scaffolded local WebLedger Replay Notebook MVP.
+- Scaffolded local HookLedger Replay Notebook MVP.
 - Added fixture save/list/get/delete operations.
 - Added secret-field redaction.
 - Added webhook replay with request/response logging.

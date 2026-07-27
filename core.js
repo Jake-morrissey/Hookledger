@@ -95,7 +95,7 @@ export class FixtureStore {
   }
 
   exportData() {
-    return { product: 'WebLedger', version: 1, fixtures: this.list(), replays: this.replays };
+    return { product: 'HookLedger', version: 1, fixtures: this.list(), replays: this.replays };
   }
 }
 

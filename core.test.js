@@ -49,7 +49,7 @@ test('imports and exports fixtures', () => {
   const store = new FixtureStore();
   const imported = store.importFixtures([{ name: 'imported', url: 'http://localhost:3001/hook', headers: { token: 'secret' }, body: { ok: true } }]);
   assert.equal(imported.length, 1);
-  assert.equal(store.exportData().product, 'WebLedger');
+  assert.equal(store.exportData().product, 'HookLedger');
   assert.equal(store.exportData().fixtures[0].headers.token, '[REDACTED]');
 });
 
@@ -170,13 +170,13 @@ test.after(() => {
 test('GET / returns HTML', async () => {
   const res = await fetch(`${BASE}/`);
   assert.equal(res.status, 200);
-  assert.match(res.text(), /WebLedger/);
+  assert.match(res.text(), /HookLedger/);
 });
 
 test('GET /workspace returns workspace page', async () => {
   const res = await fetch(`${BASE}/workspace`);
   assert.equal(res.status, 200);
-  assert.match(res.text(), /WebLedger fixture lab/);
+  assert.match(res.text(), /HookLedger fixture lab/);
 });
 
 test('POST /api/fixtures creates and GET /api/fixtures/:id retrieves', async () => {
