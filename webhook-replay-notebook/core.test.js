@@ -64,3 +64,13 @@ test('replays fixture through injected fetch implementation', async () => {
   assert.equal(calls[0].url, 'http://example.test/hook');
   assert.equal(JSON.parse(calls[0].options.body).event, 'demo');
 });
+
+test('handles replay connection errors gracefully', async () => {
+  const fakeFetch = async () => {
+    throw new TypeError('Network error');
+  };
+  const result = await replayFixture({ method: 'POST', url: 'http://example.test/hook' }, undefined, fakeFetch);
+  assert.equal(result.ok, false);
+  assert.equal(result.status, null);
+  assert.match(result.error, /Connection failed/);
+});

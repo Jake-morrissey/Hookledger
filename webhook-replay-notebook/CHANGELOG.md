@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0 - 2026-07-26
+
+- Added request body size limit (1 MB) to prevent memory exhaustion.
+- Fixed HTTP error codes: 404 for not found, 422 for validation errors, 500 for server errors.
+- Added graceful shutdown handler (SIGTERM/SIGINT) to persist data before exit.
+- Added `engines` field requiring Node.js >= 18.
+- Synced version numbers across package.json, server UI, and changelog.
+- Replaced placeholder sponsor URLs with actual values.
+
 ## 0.5.0 - 2026-07-26
 
 - Removed the local licensing system and activation flow.

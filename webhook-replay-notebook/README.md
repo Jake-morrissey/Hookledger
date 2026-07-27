@@ -24,9 +24,7 @@ Phase 1 is intentionally free and open source. The earlier machine-bound license
 
 If HookLedger saves you time, you can sponsor it here:
 
-- GitHub Sponsors: `https://github.com/sponsors/YOUR_GITHUB_USERNAME`
-
-Replace the placeholder username in `.github/FUNDING.yml` and this README before publishing.
+- GitHub Sponsors: `https://github.com/sponsors/Jake-morrissey`
 
 ## Guardrails
 

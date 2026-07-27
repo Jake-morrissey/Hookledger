@@ -64,8 +64,7 @@ export class FixtureStore {
 
   importFixtures(fixtures) {
     if (!Array.isArray(fixtures)) throw new Error('Import payload must include a fixtures array');
-    const imported = fixtures.map((fixture) => this.save({ ...fixture, id: fixture.id || crypto.randomUUID() }));
-    return imported;
+    return fixtures.map((fixture) => this.save({ ...fixture, id: fixture.id || crypto.randomUUID() }));
   }
 
   list() {
@@ -85,11 +84,10 @@ export class FixtureStore {
   }
 
   logReplay(entry) {
-    const replay = { id: crypto.randomUUID(), at: new Date().toISOString(), ...entry };
-    this.replays.unshift(replay);
-    this.replays = this.replays.slice(0, 100);
+    this.replays.unshift({ id: crypto.randomUUID(), at: new Date().toISOString(), ...entry });
+    if (this.replays.length > 100) this.replays.length = 100;
     this.persist();
-    return replay;
+    return this.replays[0];
   }
 
   history() {
@@ -102,24 +100,30 @@ export class FixtureStore {
 }
 
 export function validateHttpUrl(url) {
-  let parsed;
   try {
-    parsed = new URL(url);
-  } catch {
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      throw new Error('Target URL must be a valid http:// or https:// URL');
+    }
+    return parsed;
+  } catch (err) {
+    if (err.message.includes('http')) throw err;
     throw new Error('Target URL must be a valid http:// or https:// URL');
   }
-  if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Target URL must be a valid http:// or https:// URL');
-  return parsed;
 }
 
-export function redact(value) {
-  if (Array.isArray(value)) return value.map(redact);
+export function redact(value, debug = false) {
+  if (Array.isArray(value)) return value.map(v => redact(v, debug));
   if (!value || typeof value !== 'object') return value;
+  
   return Object.fromEntries(
     Object.entries(value).map(([key, nested]) => {
       const normalized = key.toLowerCase().replaceAll('-', '_');
-      if (SECRET_KEYS.has(normalized) || SECRET_KEYS.has(key.toLowerCase())) return [key, '[REDACTED]'];
-      return [key, redact(nested)];
+      const isSecret = SECRET_KEYS.has(normalized) || SECRET_KEYS.has(key.toLowerCase());
+      if (isSecret) {
+        return [key, debug ? { value: '[REDACTED]', reason: 'secret-field' } : '[REDACTED]'];
+      }
+      return [key, redact(nested, debug)];
     })
   );
 }
@@ -127,11 +131,29 @@ export function redact(value) {
 export async function replayFixture(fixture, targetUrl = fixture.url, fetchImpl = fetch) {
   if (!targetUrl) throw new Error('Target URL is required');
   validateHttpUrl(targetUrl);
-  const response = await fetchImpl(targetUrl, {
-    method: fixture.method || 'POST',
-    headers: { 'content-type': 'application/json', ...(fixture.headers || {}) },
-    body: JSON.stringify(fixture.body ?? {})
-  });
-  const text = await response.text();
-  return { status: response.status, ok: response.ok, body: text.slice(0, 5000) };
+  
+  try {
+    const response = await fetchImpl(targetUrl, {
+      method: fixture.method || 'POST',
+      headers: { 'content-type': 'application/json', ...(fixture.headers || {}) },
+      body: JSON.stringify(fixture.body ?? {})
+    });
+    const text = await response.text();
+    return { 
+      status: response.status, 
+      ok: response.ok, 
+      body: text.slice(0, 5000),
+      error: null
+    };
+  } catch (err) {
+    const errorMsg = err instanceof TypeError 
+      ? `Connection failed: ${err.message}. Check that the target URL is reachable.`
+      : `Replay failed: ${err.message}`;
+    return { 
+      status: null, 
+      ok: false, 
+      body: null,
+      error: errorMsg
+    };
+  }
 }
