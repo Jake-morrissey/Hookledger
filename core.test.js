@@ -49,7 +49,7 @@ test('imports and exports fixtures', () => {
   const store = new FixtureStore();
   const imported = store.importFixtures([{ name: 'imported', url: 'http://localhost:3001/hook', headers: { token: 'secret' }, body: { ok: true } }]);
   assert.equal(imported.length, 1);
-  assert.equal(store.exportData().product, 'HookLedger');
+  assert.equal(store.exportData().product, 'Webhook');
   assert.equal(store.exportData().fixtures[0].headers.token, '[REDACTED]');
 });
 
@@ -170,7 +170,7 @@ test.after(() => {
 test('GET / returns HTML', async () => {
   const res = await fetch(`${BASE}/`);
   assert.equal(res.status, 200);
-  assert.match(res.text(), /HookLedger/);
+  assert.match(res.text(), /Webhook/);
 });
 
 test('GET /workspace returns workspace page', async () => {

@@ -1,8 +1,8 @@
-# HookLedger
+# Webhook
 
 Save, redact, and replay webhook fixtures during development.
 
-HookLedger is a fully localhosted, free and open-source developer tool for testing webhook integrations without recreating the same Stripe, GitHub, Shopify, Clerk, or custom event by hand.
+Webhook is a fully localhosted, free and open-source developer tool for testing webhook integrations without recreating the same Stripe, GitHub, Shopify, Clerk, or custom event by hand.
 
 ## Quick start
 
@@ -71,7 +71,7 @@ Do not paste production secrets or sensitive customer data. This app is localhos
 
 ## Support this project
 
-If HookLedger saves you time, you can sponsor it here:
+If Webhook saves you time, you can sponsor it here:
 
 - GitHub Sponsors: `https://github.com/sponsors/Jake-morrissey`
 
