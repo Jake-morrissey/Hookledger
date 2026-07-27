@@ -95,7 +95,7 @@ export class FixtureStore {
   }
 
   exportData() {
-    return { product: 'Webhook', version: 1, fixtures: this.list(), replays: this.replays };
+    return { product: 'WebLedger', version: 1, fixtures: this.list(), replays: this.replays };
   }
 }
 
