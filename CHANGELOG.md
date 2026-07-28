@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.7.0 - 2026-07-28
+
+- Fixed `history()` to return a copy instead of mutating the internal replay array.
+- Fixed rate limiter memory leak: added 5-minute cleanup interval for stale entries.
+- Fixed fragile `querySelector('h2')`: form heading now uses `id="formTitle"`.
+- Improved `readJson` error message for malformed JSON (returns "Invalid JSON in request body").
+- Added `PATCH /api/fixtures/:id` endpoint for partial fixture updates.
+- Added `escapeHtml()` to page `<title>` tag for defense-in-depth XSS protection.
+- Moved replay history response bodies from `data-body` HTML attributes to JS memory (index-based).
+- Extracted CSS into `public/style.css` and JS into `public/app.js` with static file serving.
+- Added static file server with MIME type detection for `/public/*` routes.
+- Updated CSP to allow `style-src 'self'` and `script-src 'self'` for static files.
+- Kept synchronous `persist()` to avoid data loss on shutdown.
+
 ## 0.6.0 - 2026-07-26
 
 - Added request body size limit (1 MB) to prevent memory exhaustion.

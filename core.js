@@ -91,7 +91,7 @@ export class FixtureStore {
   }
 
   history() {
-    return this.replays;
+    return [...this.replays];
   }
 
   exportData() {

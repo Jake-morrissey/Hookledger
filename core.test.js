@@ -183,9 +183,9 @@ test('GET /workspace returns workspace page', async () => {
   assert.match(html, /HookLedger fixture lab/);
   assert.match(html, /searchInput/);
   assert.match(html, /responseModal/);
-  assert.match(html, /filterFixtures/);
-  assert.match(html, /editFixture/);
-  assert.match(html, /viewResponse/);
+  assert.match(html, /public\/app\.js/);
+  assert.match(html, /public\/style\.css/);
+  assert.match(html, /formTitle/);
 });
 
 test('POST /api/fixtures creates and GET /api/fixtures/:id retrieves', async () => {
@@ -246,6 +246,51 @@ test('PUT /api/fixtures/:id returns 404 for nonexistent', async () => {
     body: JSON.stringify({ name: 'x', body: {} })
   });
   assert.equal(res.status, 404);
+});
+
+test('PATCH /api/fixtures/:id partially updates fixture', async () => {
+  const createRes = await fetch(`${BASE}/api/fixtures`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'patch-test', url: 'http://localhost:3001/hook', body: { a: 1 } })
+  });
+  const { fixture } = await createRes.json();
+  const patchRes = await fetch(`${BASE}/api/fixtures/${fixture.id}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'patched-name' })
+  });
+  assert.equal(patchRes.status, 200);
+  const { fixture: patched } = await patchRes.json();
+  assert.equal(patched.name, 'patched-name');
+  assert.equal(patched.url, 'http://localhost:3001/hook');
+  assert.equal(patched.id, fixture.id);
+});
+
+test('GET /public/style.css returns CSS file', async () => {
+  const res = await fetch(`${BASE}/public/style.css`);
+  assert.equal(res.status, 200);
+  const text = res.text();
+  assert.match(text, /--bg/);
+});
+
+test('GET /public/app.js returns JS file', async () => {
+  const res = await fetch(`${BASE}/public/app.js`);
+  assert.equal(res.status, 200);
+  const text = res.text();
+  assert.match(text, /function escapeHtml/);
+  assert.match(text, /function editFixture/);
+});
+
+test('POST /api/fixtures with invalid JSON returns 400', async () => {
+  const res = await fetch(`${BASE}/api/fixtures`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: '{invalid json'
+  });
+  assert.equal(res.status, 400);
+  const body = await res.json();
+  assert.match(body.error, /Invalid JSON/);
 });
 
 test('GET /api/export returns valid export payload', async () => {
