@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { FixtureStore, redact, replayFixture, validateHttpUrl, validateReplayTarget } from './core.js';
+import { FixtureStore, redact, redactedFixture, replayFixture, validateHttpUrl, validateReplayTarget } from './core.js';
 import { spawn } from 'node:child_process';
 
 test('redacts secret-like fields recursively', () => {
@@ -17,8 +17,9 @@ test('redacts secret-like fields recursively', () => {
 test('saves and lists fixtures with redaction', () => {
   const store = new FixtureStore();
   const fixture = store.save({ name: 'Stripe payment succeeded', url: 'http://localhost:3001/hook', headers: { 'stripe-signature': 'sig' }, body: { id: 'evt_1' } });
-  assert.equal(fixture.headers['stripe-signature'], '[REDACTED]');
-  assert.equal(store.get(fixture.id).name, 'Stripe payment succeeded');
+  assert.equal(fixture.headers['stripe-signature'], 'sig');
+  assert.equal(store.get(fixture.id).headers['stripe-signature'], 'sig');
+  assert.equal(store.list()[0].headers['stripe-signature'], '[REDACTED]');
   assert.equal(store.list().length, 1);
 });
 
@@ -113,6 +114,52 @@ test('redact does not over-match short or unrelated field names', () => {
   assert.equal(result.status, 'ok');
   assert.equal(result.created_at, '2024-01-01');
   assert.equal(result.total, '100');
+});
+
+test('save stores real values, list returns redacted copies', () => {
+  const store = new FixtureStore();
+  store.save({ name: 'test', url: 'http://localhost:3001/hook', headers: { 'authorization': 'Bearer real-token', 'content-type': 'application/json' }, body: { secret: 'abc', public: 'xyz' } });
+  const real = store.get(store.list()[0].id);
+  assert.equal(real.headers.authorization, 'Bearer real-token');
+  assert.equal(real.body.secret, 'abc');
+  const listed = store.list()[0];
+  assert.equal(listed.headers.authorization, '[REDACTED]');
+  assert.equal(listed.body.secret, '[REDACTED]');
+  assert.equal(listed.body.public, 'xyz');
+});
+
+test('exportData returns redacted fixtures', () => {
+  const store = new FixtureStore();
+  store.save({ name: 'export-test', url: 'http://localhost:3001/hook', headers: { 'stripe-signature': 'real-sig' }, body: { data: 'ok' } });
+  const exported = store.exportData();
+  assert.equal(exported.fixtures[0].headers['stripe-signature'], '[REDACTED]');
+  const real = store.get(store.list()[0].id);
+  assert.equal(real.headers['stripe-signature'], 'real-sig');
+});
+
+test('replay sends real values, not redacted placeholders', async () => {
+  const calls = [];
+  const fakeFetch = async (url, options) => {
+    calls.push({ url, options });
+    return { status: 200, ok: true, text: async () => 'ok' };
+  };
+  const store = new FixtureStore();
+  const fixture = store.save({ name: 'replay-test', url: 'http://127.0.0.1:4000/hook', headers: { 'stripe-signature': 'whsec_real123' }, body: { event: 'payment.succeeded' } });
+  await replayFixture(store.get(fixture.id), undefined, fakeFetch);
+  const sentHeaders = calls[0].options.headers;
+  assert.equal(sentHeaders['stripe-signature'], 'whsec_real123');
+  const sentBody = JSON.parse(calls[0].options.body);
+  assert.equal(sentBody.event, 'payment.succeeded');
+});
+
+test('redactedFixture helper strips secrets', () => {
+  const fixture = { id: '1', name: 'test', headers: { 'authorization': 'Bearer tok', 'content-type': 'application/json' }, body: { secret: 's', data: 'd' } };
+  const redacted = redactedFixture(fixture);
+  assert.equal(redacted.headers.authorization, '[REDACTED]');
+  assert.equal(redacted.headers['content-type'], 'application/json');
+  assert.equal(redacted.body.secret, '[REDACTED]');
+  assert.equal(redacted.body.data, 'd');
+  assert.equal(redacted.id, '1');
 });
 
 test('POST /api/fixtures ignores client-supplied id', async () => {
@@ -275,6 +322,16 @@ test('GET /workspace returns workspace page', async () => {
   assert.match(html, /public\/app\.js/);
   assert.match(html, /public\/style\.css/);
   assert.match(html, /formTitle/);
+  assert.doesNotMatch(html, /onclick="/, 'workspace page must not contain inline onclick handlers');
+  assert.doesNotMatch(html, /oninput="/, 'workspace page must not contain inline oninput handlers');
+});
+
+test('HTML responses include CSP without unsafe-inline for scripts', async () => {
+  const res = await fetch(`${BASE}/`);
+  assert.equal(res.status, 200);
+  const csp = res.headers['content-security-policy'];
+  assert.ok(csp, 'CSP header must be set');
+  assert.doesNotMatch(csp, /script-src.*unsafe-inline/, 'CSP must not allow unsafe-inline scripts');
 });
 
 test('POST /api/fixtures creates and GET /api/fixtures/:id retrieves', async () => {

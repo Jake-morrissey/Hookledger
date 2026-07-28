@@ -138,17 +138,17 @@ async function removeFixture(id) {
 }
 
 function editFixture(id) {
-  const f = allFixtures.find(x => x.id === id);
-  if (!f) return;
-  editingId = id;
-  nameEl.value = f.name;
-  urlEl.value = f.url || '';
-  methodEl.value = f.method;
-  headersEl.value = JSON.stringify(f.headers || {}, null, 2);
-  bodyEl.value = JSON.stringify(f.body || {}, null, 2);
-  formTitle.textContent = 'Edit fixture';
-  message.innerHTML = '<p class="ok">Editing ' + escapeHtml(f.name) + '</p>';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  api('/api/fixtures/' + id).then(({ fixture }) => {
+    editingId = id;
+    nameEl.value = fixture.name;
+    urlEl.value = fixture.url || '';
+    methodEl.value = fixture.method;
+    headersEl.value = JSON.stringify(fixture.headers || {}, null, 2);
+    bodyEl.value = JSON.stringify(fixture.body || {}, null, 2);
+    formTitle.textContent = 'Edit fixture';
+    message.innerHTML = '<p class="ok">Editing ' + escapeHtml(fixture.name) + '</p>';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }).catch(e => flash(e.message, 'error'));
 }
 
 function viewResponse(title, body) {
@@ -267,6 +267,19 @@ fixtures.addEventListener('click', function (e) {
   if (btn.dataset.action === 'replay') replay(id);
   if (btn.dataset.action === 'edit') editFixture(id);
   if (btn.dataset.action === 'delete') removeFixture(id);
+});
+
+document.getElementById('refreshBtn')?.addEventListener('click', load);
+document.getElementById('exportBtn')?.addEventListener('click', exportData);
+document.getElementById('previewBtn')?.addEventListener('click', previewPayload);
+document.getElementById('debugBtn')?.addEventListener('click', debugRedaction);
+document.getElementById('saveBtn')?.addEventListener('click', save);
+document.getElementById('clearBtn')?.addEventListener('click', clearForm);
+document.getElementById('importBtn')?.addEventListener('click', importFixtures);
+searchInput?.addEventListener('input', filterFixtures);
+document.getElementById('closeModalBtn')?.addEventListener('click', closeModal);
+document.getElementById('modalBackdrop')?.addEventListener('click', function (e) {
+  if (e.target === this) closeModal();
 });
 
 load().catch(e => flash(e.message, 'error'));

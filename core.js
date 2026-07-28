@@ -66,8 +66,8 @@ export class FixtureStore {
       name,
       url,
       method,
-      headers: redact(input?.headers ?? {}),
-      body: redact(input?.body ?? {}),
+      headers: input?.headers ?? {},
+      body: input?.body ?? {},
       createdAt: existing?.createdAt || now,
       updatedAt: now
     };
@@ -92,8 +92,8 @@ export class FixtureStore {
       const existing = this.fixtures.get(id);
       return {
         id, name, url, method,
-        headers: redact(fixture?.headers ?? {}),
-        body: redact(fixture?.body ?? {}),
+        headers: fixture?.headers ?? {},
+        body: fixture?.body ?? {},
         createdAt: existing?.createdAt || now,
         updatedAt: now
       };
@@ -104,7 +104,7 @@ export class FixtureStore {
   }
 
   list() {
-    return [...this.fixtures.values()].sort((a, b) => a.name.localeCompare(b.name));
+    return [...this.fixtures.values()].map(redactedFixture).sort((a, b) => a.name.localeCompare(b.name));
   }
 
   get(id) {
@@ -178,6 +178,10 @@ export function redact(value, debug = false) {
       return [key, redact(nested, debug)];
     })
   );
+}
+
+export function redactedFixture(fixture) {
+  return { ...fixture, headers: redact(fixture.headers ?? {}), body: redact(fixture.body ?? {}) };
 }
 
 export async function replayFixture(fixture, targetUrl = fixture.url, fetchImpl = fetch) {

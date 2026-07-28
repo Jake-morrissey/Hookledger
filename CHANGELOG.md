@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0 - 2026-07-28
+
+- **Critical fix: replay now sends real secret values instead of `[REDACTED]`.** Previously, `save()` called `redact()` which permanently overwrote real header/body values with the literal string `[REDACTED]` in storage. Every subsequent replay sent the placeholder instead of the real signature/token. Now: `save()` stores real values; `list()` and `exportData()` return redacted copies for display; `get()` returns real values for replay and edit. Replaying a fixture with a real `stripe-signature` now works correctly.
+- Removed all inline `onclick`/`oninput` event handlers from server-rendered pages. All event bindings now use `addEventListener` in `public/app.js`. Workspace buttons (`Refresh`, `Export`, `Preview`, `Debug`, `Save`, `Clear`, `Import`) and modal/search input now use `id`-based selection.
+- Removed `'unsafe-inline'` from `script-src` CSP directive. CSP now reads `script-src 'self'` — inline scripts are no longer permitted. `style-src` retains `'unsafe-inline'` for the extracted stylesheet.
+- `editFixture()` now fetches real fixture data via `GET /api/fixtures/:id` instead of reading from the redacted list, so the edit form shows real secrets that can be modified before save.
+- Added `redactedFixture()` export — creates a display-safe copy of a fixture with secrets replaced by `[REDACTED]`.
+
 ## 0.8.0 - 2026-07-28
 
 - Fixed critical bug: `public/app.js` contained stale server code instead of the actual client script — Workspace page is now functional.
