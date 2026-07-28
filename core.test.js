@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { FixtureStore, redact, replayFixture, validateHttpUrl } from './core.js';
+import { FixtureStore, redact, replayFixture, validateHttpUrl, validateReplayTarget } from './core.js';
 import { spawn } from 'node:child_process';
 
 test('redacts secret-like fields recursively', () => {
@@ -69,12 +69,12 @@ test('replays fixture through injected fetch implementation', async () => {
     calls.push({ url, options });
     return { status: 202, ok: true, text: async () => 'accepted' };
   };
-  const result = await replayFixture({ method: 'POST', headers: { 'x-test': '1' }, body: { event: 'demo' }, url: 'http://example.test/hook' }, undefined, fakeFetch);
+  const result = await replayFixture({ method: 'POST', headers: { 'x-test': '1' }, body: { event: 'demo' }, url: 'http://127.0.0.1:4000/hook' }, undefined, fakeFetch);
   assert.equal(result.status, 202);
   assert.equal(result.body, 'accepted');
   assert.equal(typeof result.durationMs, 'number');
   assert.ok(result.durationMs >= 0);
-  assert.equal(calls[0].url, 'http://example.test/hook');
+  assert.equal(calls[0].url, 'http://127.0.0.1:4000/hook');
   assert.equal(JSON.parse(calls[0].options.body).event, 'demo');
 });
 
@@ -82,7 +82,7 @@ test('handles replay connection errors gracefully', async () => {
   const fakeFetch = async () => {
     throw new TypeError('Network error');
   };
-  const result = await replayFixture({ method: 'POST', url: 'http://example.test/hook' }, undefined, fakeFetch);
+  const result = await replayFixture({ method: 'POST', url: 'http://127.0.0.1:4000/hook' }, undefined, fakeFetch);
   assert.equal(result.ok, false);
   assert.equal(result.status, null);
   assert.equal(typeof result.durationMs, 'number');
@@ -94,6 +94,34 @@ test('redact handles null and non-object inputs', () => {
   assert.equal(redact(42), 42);
   assert.equal(redact('plain string'), 'plain string');
   assert.equal(redact(undefined), undefined);
+});
+
+test('redact uses substring matching for common token variants', () => {
+  const result = redact({ access_token: 'abc', refresh_token: 'xyz', 'x-api-key': 'key123', 'x-hub-signature-256': 'sig', 'x-shopify-hmac-sha256': 'hmac' });
+  assert.equal(result.access_token, '[REDACTED]');
+  assert.equal(result.refresh_token, '[REDACTED]');
+  assert.equal(result['x-api-key'], '[REDACTED]');
+  assert.equal(result['x-hub-signature-256'], '[REDACTED]');
+  assert.equal(result['x-shopify-hmac-sha256'], '[REDACTED]');
+});
+
+test('validateReplayTarget rejects non-loopback URLs', () => {
+  assert.throws(() => validateReplayTarget('http://evil.com/hook'), /loopback/);
+  assert.throws(() => validateReplayTarget('http://192.168.1.1/hook'), /loopback/);
+  assert.doesNotThrow(() => validateReplayTarget('http://127.0.0.1:4000/hook'));
+  assert.doesNotThrow(() => validateReplayTarget('http://localhost:4000/hook'));
+  assert.doesNotThrow(() => validateReplayTarget('http://[::1]:4000/hook'));
+});
+
+test('importFixtures rolls back on validation error mid-batch', () => {
+  const store = new FixtureStore();
+  store.save({ name: 'existing', url: 'http://localhost:3001/hook', body: {} });
+  assert.throws(() => store.importFixtures([
+    { name: 'valid', url: 'http://localhost:3001/hook', body: {} },
+    { name: '', url: 'http://localhost:3001/hook', body: {} }
+  ]), /name is required/i);
+  assert.equal(store.list().length, 1);
+  assert.equal(store.list()[0].name, 'existing');
 });
 
 test('delete skips persist when fixture ID does not exist', () => {
@@ -128,7 +156,7 @@ test('validateHttpUrl rejects javascript: protocol', () => {
 test('replay response truncation includes truncated flag', async () => {
   const longBody = 'x'.repeat(6000);
   const fakeFetch = async () => ({ status: 200, ok: true, text: async () => longBody });
-  const result = await replayFixture({ method: 'POST', url: 'http://example.test/hook' }, undefined, fakeFetch);
+  const result = await replayFixture({ method: 'POST', url: 'http://127.0.0.1:4000/hook' }, undefined, fakeFetch);
   assert.equal(result.truncated, true);
   assert.equal(result.body.length, 5000);
 });
@@ -136,7 +164,7 @@ test('replay response truncation includes truncated flag', async () => {
 test('replay response not truncated when under limit', async () => {
   const shortBody = 'hello';
   const fakeFetch = async () => ({ status: 200, ok: true, text: async () => shortBody });
-  const result = await replayFixture({ method: 'POST', url: 'http://example.test/hook' }, undefined, fakeFetch);
+  const result = await replayFixture({ method: 'POST', url: 'http://127.0.0.1:4000/hook' }, undefined, fakeFetch);
   assert.equal(result.truncated, false);
   assert.equal(result.body, 'hello');
 });
@@ -284,12 +312,19 @@ test('GET /public/style.css returns CSS file', async () => {
   assert.match(text, /--bg/);
 });
 
-test('GET /public/app.js returns JS file', async () => {
+test('GET /public/app.js returns valid client JS', async () => {
   const res = await fetch(`${BASE}/public/app.js`);
   assert.equal(res.status, 200);
   const text = res.text();
   assert.match(text, /function escapeHtml/);
   assert.match(text, /function editFixture/);
+  assert.match(text, /function load/);
+  assert.match(text, /function save/);
+  assert.match(text, /function replay/);
+  assert.match(text, /function renderFixtures/);
+  assert.match(text, /function renderHistory/);
+  assert.match(text, /fixtures\.addEventListener/);
+  assert.doesNotThrow(() => new Function(text), 'app.js must be parseable as valid JavaScript');
 });
 
 test('POST /api/fixtures with invalid JSON returns 400', async () => {
@@ -335,6 +370,23 @@ test('POST /api/redact returns redacted payload', async () => {
   const { redacted } = await res.json();
   assert.equal(redacted.headers.authorization, '[REDACTED]');
   assert.equal(redacted.name, 'test');
+});
+
+test('POST /api/replay with non-loopback target returns 400', async () => {
+  const createRes = await fetch(`${BASE}/api/fixtures`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'ssrf-test', url: 'http://evil.com/hook', body: {} })
+  });
+  const { fixture } = await createRes.json();
+  const res = await fetch(`${BASE}/api/replay`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ id: fixture.id, targetUrl: 'http://evil.com/hook' })
+  });
+  assert.equal(res.status, 400);
+  const body = await res.json();
+  assert.match(body.error, /loopback/);
 });
 
 test('POST /api/replay returns 429 after exceeding rate limit', async () => {

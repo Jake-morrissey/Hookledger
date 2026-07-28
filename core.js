@@ -12,7 +12,11 @@ const SECRET_KEYS = new Set([
   'secret',
   'password',
   'client_secret',
-  'stripe-signature'
+  'stripe-signature',
+  'x-hub-signature',
+  'x-hub-signature-256',
+  'x-shopify-hmac-sha256',
+  'x-webhook-signature'
 ]);
 
 const ALLOWED_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -65,7 +69,7 @@ export class FixtureStore {
   importFixtures(fixtures) {
     if (!Array.isArray(fixtures)) throw new Error('Import payload must include a fixtures array');
     const warnings = [];
-    const imported = fixtures.map((fixture) => {
+    const validated = fixtures.map((fixture) => {
       const id = fixture.id || crypto.randomUUID();
       if (this.fixtures.has(id)) warnings.push(`Fixture "${fixture.name || id}" overwrites existing ID ${id}`);
       const name = String(fixture?.name ?? '').trim();
@@ -76,21 +80,17 @@ export class FixtureStore {
       if (!ALLOWED_METHODS.has(method)) throw new Error(`Method must be one of ${[...ALLOWED_METHODS].join(', ')}`);
       const now = new Date().toISOString();
       const existing = this.fixtures.get(id);
-      const saved = {
-        id,
-        name,
-        url,
-        method,
+      return {
+        id, name, url, method,
         headers: redact(fixture?.headers ?? {}),
         body: redact(fixture?.body ?? {}),
         createdAt: existing?.createdAt || now,
         updatedAt: now
       };
-      this.fixtures.set(id, saved);
-      return saved;
     });
+    for (const f of validated) this.fixtures.set(f.id, f);
     this.persist();
-    return { imported, warnings };
+    return { imported: validated, warnings };
   }
 
   list() {
@@ -138,6 +138,16 @@ export function validateHttpUrl(url) {
   }
 }
 
+export function validateReplayTarget(url) {
+  const parsed = validateHttpUrl(url);
+  const host = parsed.hostname;
+  const isLoopback = host === 'localhost' || host === '::1' || host === '[::1]' || host === '0.0.0.0' || host.startsWith('127.');
+  if (!isLoopback) {
+    throw new Error('Replay target must be a localhost/loopback address for safety');
+  }
+  return parsed;
+}
+
 export function redact(value, debug = false) {
   if (Array.isArray(value)) return value.map(v => redact(v, debug));
   if (!value || typeof value !== 'object') return value;
@@ -145,7 +155,10 @@ export function redact(value, debug = false) {
   return Object.fromEntries(
     Object.entries(value).map(([key, nested]) => {
       const normalized = key.toLowerCase().replaceAll('-', '_');
-      const isSecret = SECRET_KEYS.has(normalized) || SECRET_KEYS.has(key.toLowerCase());
+      const isSecret = [...SECRET_KEYS].some(k => {
+        const kn = k.replaceAll('-', '_');
+        return normalized === kn || normalized.includes(kn) || kn.includes(normalized);
+      });
       if (isSecret) {
         return [key, debug ? { value: '[REDACTED]', reason: 'secret-field' } : '[REDACTED]'];
       }
@@ -156,7 +169,7 @@ export function redact(value, debug = false) {
 
 export async function replayFixture(fixture, targetUrl = fixture.url, fetchImpl = fetch) {
   if (!targetUrl) throw new Error('Target URL is required');
-  validateHttpUrl(targetUrl);
+  validateReplayTarget(targetUrl);
   
   const start = Date.now();
   try {
