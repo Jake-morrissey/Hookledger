@@ -128,11 +128,13 @@ const server = http.createServer(async (req, res) => {
     }
 
     // Page routes
-    if (pathname === '/') return send(res, 200, homePage(pathname), 'text/html');
-    if (pathname === '/workspace') return send(res, 200, workspacePage(pathname), 'text/html');
-    if (pathname === '/docs') return send(res, 200, docsPage(pathname), 'text/html');
-    if (pathname === '/support') return send(res, 200, supportPage(pathname), 'text/html');
-    if (pathname === '/changelog') return send(res, 200, changelogPage(pathname), 'text/html');
+    let pagePathMatched = false;
+    if (pathname === '/') { pagePathMatched = true; if (req.method === 'GET' || req.method === 'HEAD') return send(res, 200, homePage(pathname), 'text/html'); }
+    if (pathname === '/workspace') { pagePathMatched = true; if (req.method === 'GET' || req.method === 'HEAD') return send(res, 200, workspacePage(pathname), 'text/html'); }
+    if (pathname === '/docs') { pagePathMatched = true; if (req.method === 'GET' || req.method === 'HEAD') return send(res, 200, docsPage(pathname), 'text/html'); }
+    if (pathname === '/support') { pagePathMatched = true; if (req.method === 'GET' || req.method === 'HEAD') return send(res, 200, supportPage(pathname), 'text/html'); }
+    if (pathname === '/changelog') { pagePathMatched = true; if (req.method === 'GET' || req.method === 'HEAD') return send(res, 200, changelogPage(pathname), 'text/html'); }
+    if (pagePathMatched && req.method !== 'GET' && req.method !== 'HEAD') { await drainBody(req); return send(res, 405, { error: 'Method not allowed' }); }
     
     // API routes
     let apiPathMatched = false;

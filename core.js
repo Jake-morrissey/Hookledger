@@ -206,11 +206,13 @@ export function validateHttpUrl(url) {
   try {
     const parsed = new URL(url);
     if (!['http:', 'https:'].includes(parsed.protocol)) {
-      throw new Error('Target URL must be a valid http:// or https:// URL');
+      const validationError = new Error('Target URL must be a valid http:// or https:// URL');
+      validationError.isValidationError = true;
+      throw validationError;
     }
     return parsed;
   } catch (err) {
-    if (err.message.includes('http')) throw err;
+    if (err.isValidationError) throw err;
     throw new Error('Target URL must be a valid http:// or https:// URL');
   }
 }
