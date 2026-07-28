@@ -278,7 +278,7 @@ document.getElementById('clearBtn')?.addEventListener('click', clearForm);
 document.getElementById('importBtn')?.addEventListener('click', importFixtures);
 searchInput?.addEventListener('input', filterFixtures);
 document.getElementById('closeModalBtn')?.addEventListener('click', closeModal);
-document.getElementById('modalBackdrop')?.addEventListener('click', function (e) {
+responseModal?.addEventListener('click', function (e) {
   if (e.target === this) closeModal();
 });
 

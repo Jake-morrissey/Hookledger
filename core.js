@@ -33,11 +33,25 @@ export class FixtureStore {
     if (!this.dataFile || !fs.existsSync(this.dataFile)) return;
     try {
       const data = JSON.parse(fs.readFileSync(this.dataFile, 'utf8') || '{}');
-      this.fixtures = new Map((data.fixtures || []).map((fixture) => [fixture.id, fixture]));
+      const entries = [];
+      const seenIds = new Set();
+      for (const fixture of (data.fixtures || [])) {
+        if (!fixture.id) {
+          console.warn('load: skipping fixture without id:', fixture.name || '<unknown>');
+          continue;
+        }
+        if (seenIds.has(fixture.id)) {
+          console.warn('load: skipping duplicate id:', fixture.id, fixture.name || '<unknown>');
+          continue;
+        }
+        seenIds.add(fixture.id);
+        entries.push([fixture.id, fixture]);
+      }
+      this.fixtures = new Map(entries);
       this.replays = data.replays || [];
     } catch (err) {
       console.error(`Corrupted data file, backing up and starting fresh: ${err.message}`);
-      const backup = this.dataFile + '.bak.' + Date.now();
+      const backup = this.dataFile + '.bak.' + Date.now() + '.' + crypto.randomUUID().slice(0, 8);
       try { fs.copyFileSync(this.dataFile, backup); } catch {}
       this.fixtures = new Map();
       this.replays = [];
@@ -59,6 +73,12 @@ export class FixtureStore {
     if (url) validateHttpUrl(url);
     const method = String(input?.method ?? 'POST').toUpperCase();
     if (!ALLOWED_METHODS.has(method)) throw new Error(`Method must be one of ${[...ALLOWED_METHODS].join(', ')}`);
+    if (input?.headers != null && (typeof input.headers !== 'object' || Array.isArray(input.headers))) {
+      throw new Error('Fixture headers must be a plain object');
+    }
+    if (input?.body != null && (typeof input.body !== 'object' || Array.isArray(input.body))) {
+      throw new Error('Fixture body must be a plain object');
+    }
     const now = new Date().toISOString();
     const existing = input?.id ? this.fixtures.get(input.id) : null;
     const fixture = {
@@ -72,22 +92,36 @@ export class FixtureStore {
       updatedAt: now
     };
     this.fixtures.set(fixture.id, fixture);
-    this.persist();
+    try {
+      this.persist();
+    } catch (err) {
+      this.fixtures.delete(fixture.id);
+      throw err;
+    }
     return fixture;
   }
 
   importFixtures(fixtures) {
     if (!Array.isArray(fixtures)) throw new Error('Import payload must include a fixtures array');
     const warnings = [];
+    const seenIds = new Set();
     const validated = fixtures.map((fixture) => {
       const id = fixture.id || crypto.randomUUID();
       if (this.fixtures.has(id)) warnings.push(`Fixture "${fixture.name || id}" overwrites existing ID ${id}`);
+      if (seenIds.has(id)) warnings.push(`Fixture "${fixture.name || id}" has duplicate ID ${id} within the same batch`);
+      seenIds.add(id);
       const name = String(fixture?.name ?? '').trim();
       if (!name) throw new Error('Fixture name is required');
       const url = String(fixture?.url ?? '').trim();
       if (url) validateHttpUrl(url);
       const method = String(fixture?.method ?? 'POST').toUpperCase();
       if (!ALLOWED_METHODS.has(method)) throw new Error(`Method must be one of ${[...ALLOWED_METHODS].join(', ')}`);
+      if (fixture.headers != null && (typeof fixture.headers !== 'object' || Array.isArray(fixture.headers))) {
+        throw new Error('Fixture headers must be a plain object');
+      }
+      if (fixture.body != null && (typeof fixture.body !== 'object' || Array.isArray(fixture.body))) {
+        throw new Error('Fixture body must be a plain object');
+      }
       const now = new Date().toISOString();
       const existing = this.fixtures.get(id);
       return {
@@ -98,7 +132,12 @@ export class FixtureStore {
         updatedAt: now
       };
     });
-    for (const f of validated) this.fixtures.set(f.id, f);
+    const written = new Set();
+    for (const f of validated) {
+      if (written.has(f.id)) continue;
+      written.add(f.id);
+      this.fixtures.set(f.id, f);
+    }
     this.persist();
     return { imported: validated, warnings };
   }
@@ -114,24 +153,37 @@ export class FixtureStore {
   }
 
   delete(id) {
-    const deleted = this.fixtures.delete(id);
-    if (deleted) this.persist();
-    return deleted;
+    if (!this.fixtures.has(id)) return false;
+    const fixture = this.fixtures.get(id);
+    this.fixtures.delete(id);
+    try {
+      this.persist();
+    } catch (err) {
+      this.fixtures.set(id, fixture);
+      throw err;
+    }
+    return true;
   }
 
   logReplay(entry) {
-    this.replays.unshift({ id: crypto.randomUUID(), at: new Date().toISOString(), ...entry });
+    const replay = { id: crypto.randomUUID(), at: new Date().toISOString(), ...entry };
+    this.replays.unshift(replay);
     if (this.replays.length > 100) this.replays.length = 100;
-    this.persist();
+    try {
+      this.persist();
+    } catch (err) {
+      this.replays.shift();
+      throw err;
+    }
     return this.replays[0];
   }
 
   history() {
-    return [...this.replays];
+    return this.replays.map(r => structuredClone(r));
   }
 
   exportData() {
-    return { product: 'HookLedger', version: 1, fixtures: this.list(), replays: [...this.replays] };
+    return { product: 'HookLedger', version: 1, fixtures: this.list(), replays: this.replays.map(r => structuredClone(r)) };
   }
 }
 
@@ -151,7 +203,9 @@ export function validateHttpUrl(url) {
 export function validateReplayTarget(url) {
   const parsed = validateHttpUrl(url);
   const host = parsed.hostname;
-  const isLoopback = host === 'localhost' || host === '::1' || host === '[::1]' || host === '0.0.0.0' || host.startsWith('127.');
+  const isExplicitLoopback = host === 'localhost' || host === '::1' || host === '[::1]' || host === '0.0.0.0';
+  const is127Prefix = host === '127.0.0.1' || /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host);
+  const isLoopback = isExplicitLoopback || is127Prefix;
   if (!isLoopback) {
     throw new Error('Replay target must be a localhost/loopback address for safety');
   }
@@ -162,13 +216,12 @@ export function redact(value, debug = false) {
   if (Array.isArray(value)) return value.map(v => redact(v, debug));
   if (!value || typeof value !== 'object') return value;
   
+  const secretKeys = [...SECRET_KEYS].map(k => k.replaceAll('-', '_'));
   return Object.fromEntries(
     Object.entries(value).map(([key, nested]) => {
       const normalized = key.toLowerCase().replaceAll('-', '_');
-      const isSecret = [...SECRET_KEYS].some(k => {
-        const kn = k.replaceAll('-', '_');
+      const isSecret = secretKeys.some(kn => {
         return normalized === kn ||
-          normalized.startsWith(kn + '_') ||
           normalized.endsWith('_' + kn) ||
           normalized.includes('_' + kn + '_');
       });

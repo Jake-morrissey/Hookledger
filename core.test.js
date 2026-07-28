@@ -200,7 +200,8 @@ test('load() recovers gracefully from corrupted data file', () => {
   fs.writeFileSync(dataFile, '{invalid json!!!');
   const store = new FixtureStore({ dataFile });
   assert.equal(store.list().length, 0);
-  assert.ok(fs.existsSync(dataFile + '.bak.' + Date.now()) || true);
+  const backups = fs.readdirSync(dir).filter(f => f.startsWith(path.basename(dataFile) + '.bak.'));
+  assert.ok(backups.length > 0, 'backup file should exist after corrupted load');
 });
 
 test('validateReplayTarget rejects non-loopback URLs', () => {
@@ -269,13 +270,31 @@ test('replay response not truncated when under limit', async () => {
 
 import http from 'node:http';
 
-function startServer() {
-  return new Promise((resolve) => {
-    const child = spawn('node', ['server.js'], { cwd: path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1')), stdio: 'pipe' });
-    child.stdout.on('data', (data) => {
-      if (data.toString().includes('running at')) resolve(child);
+function startServer(dataDir) {
+  return new Promise((resolve, reject) => {
+    const child = spawn('node', ['server.js'], {
+      cwd: path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1')),
+      stdio: 'pipe',
+      env: { ...process.env, DATA_FILE: path.join(dataDir, 'hookledger.json') }
     });
-    child.on('error', () => {});
+    const timeout = setTimeout(() => {
+      child.kill();
+      reject(new Error('server failed to start within 15s; is port 3000 already in use?'));
+    }, 15000);
+    child.stdout.on('data', (data) => {
+      if (data.toString().includes('running at')) {
+        clearTimeout(timeout);
+        resolve(child);
+      }
+    });
+    child.on('error', (err) => {
+      clearTimeout(timeout);
+      reject(new Error('server spawn failed: ' + err.message));
+    });
+    child.on('exit', (code) => {
+      clearTimeout(timeout);
+      reject(new Error('server exited unexpectedly with code ' + code));
+    });
   });
 }
 
@@ -295,15 +314,20 @@ function fetch(url, options = {}) {
 
 let serverProcess;
 let BASE;
+let testDataDir;
 
 test.before(async () => {
-  serverProcess = await startServer();
+  testDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hookledger-test-'));
+  serverProcess = await startServer(testDataDir);
   BASE = 'http://localhost:3000';
   await new Promise(r => setTimeout(r, 500));
 });
 
 test.after(() => {
   if (serverProcess) serverProcess.kill();
+  if (testDataDir) {
+    try { fs.rmSync(testDataDir, { recursive: true, force: true }); } catch {}
+  }
 });
 
 test('GET / returns HTML', async () => {
