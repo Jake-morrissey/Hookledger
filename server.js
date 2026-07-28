@@ -134,7 +134,9 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'GET') return send(res, 200, { fixtures: store.list() });
       if (req.method === 'POST') {
         if (!req.headers['content-type']?.includes('application/json')) return send(res, 415, { error: 'Content-Type must be application/json' });
-        return send(res, 201, { fixture: store.save(await readJson(req)) });
+        const body = await readJson(req);
+        const { id: _ignored, ...fixtureData } = body;
+        return send(res, 201, { fixture: store.save(fixtureData) });
       }
     }
     if (pathname.match(/^\/api\/fixtures\/[^/]+$/)) {

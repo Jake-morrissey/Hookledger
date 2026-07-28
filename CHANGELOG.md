@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.8.0 - 2026-07-28
+
+- Fixed critical bug: `public/app.js` contained stale server code instead of the actual client script — Workspace page is now functional.
+- Added SSRF guard: replay targets restricted to localhost/loopback addresses only.
+- Server now binds to `127.0.0.1` by default instead of all interfaces.
+- Redaction now uses boundary-aware matching — catches `access_token`, `refresh_token`, `x-api-key`, and similar variants without over-matching short field names like `at`, `key`, or `secretary`.
+- Added provider-specific signature headers: `x-hub-signature-256` (GitHub), `x-shopify-hmac-sha256` (Shopify), `x-webhook-signature`.
+- Fixed partial-import state corruption: `importFixtures` validates all items before mutating, preventing inconsistent state on mid-batch errors.
+- Fixed POST `/api/fixtures` silently overwriting fixtures when client supplies an ID — client-supplied IDs are now ignored on create.
+- Fixed non-atomic data file writes: `persist()` now writes to a temp file then renames atomically.
+- Added corruption recovery: if `data/hookledger.json` is corrupted, it is backed up and the server starts fresh.
+- Improved test for `public/app.js`: now validates JavaScript parseability, not just substring matching.
+- SSRF validation errors now correctly return 400 instead of 500.
+- Documented `PORT` and `HOST` environment variables in README.
+- Updated README to reflect loopback-only replay behavior.
+
 ## 0.7.0 - 2026-07-28
 
 - Fixed `history()` to return a copy instead of mutating the internal replay array.

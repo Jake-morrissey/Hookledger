@@ -17,6 +17,13 @@ npm start
 
 Then open http://localhost:3000.
 
+### Environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `3000` | Port the server listens on |
+| `HOST` | `127.0.0.1` | Hostname to bind to |
+
 ## Download
 
 1. Click the green **Code** button on this page
@@ -36,7 +43,7 @@ npm test
 - Polished multi-page developer-tool interface with dark theme.
 - Save named webhook fixtures with automatic secret redaction.
 - Preview and debug redaction before saving.
-- Replay fixtures against any local or remote HTTP endpoint.
+- Replay fixtures against any local HTTP endpoint (loopback-only for safety).
 - Import and export fixtures as JSON.
 - Replay history with response status and body.
 - File-backed persistence at `data/hookledger.json` (git-ignored).
@@ -56,7 +63,7 @@ npm test
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/api/fixtures` | List all fixtures |
-| `POST` | `/api/fixtures` | Create or update a fixture |
+| `POST` | `/api/fixtures` | Create a new fixture (client-supplied IDs are ignored) |
 | `GET` | `/api/fixtures/:id` | Get a single fixture |
 | `PUT` | `/api/fixtures/:id` | Update an existing fixture |
 | `PATCH` | `/api/fixtures/:id` | Partially update an existing fixture |
@@ -65,11 +72,14 @@ npm test
 | `GET` | `/api/export` | Export all fixtures as JSON |
 | `POST` | `/api/import` | Import fixtures from JSON |
 | `POST` | `/api/redact` | Preview redaction (dry-run) |
-| `POST` | `/api/replay` | Replay a fixture to its target URL |
+| `POST` | `/api/replay` | Replay a fixture to a local endpoint (loopback only) |
 
 ## Guardrails
 
-Do not paste production secrets or sensitive customer data. This app is localhost-first and does not require account creation, billing, or hosted infrastructure for Phase 1.
+- Replay targets are restricted to localhost/loopback addresses for safety.
+- Client-supplied fixture IDs on create are ignored; use PUT/PATCH to update by ID.
+- Corrupted data files are backed up automatically and the server starts fresh.
+- Do not paste production secrets or sensitive customer data. This app is localhost-first and does not require account creation, billing, or hosted infrastructure for Phase 1.
 
 ## Support this project
 

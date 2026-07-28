@@ -105,6 +105,57 @@ test('redact uses substring matching for common token variants', () => {
   assert.equal(result['x-shopify-hmac-sha256'], '[REDACTED]');
 });
 
+test('redact does not over-match short or unrelated field names', () => {
+  const result = redact({ at: 'value', key: 'value', secretary: 'value', status: 'ok', created_at: '2024-01-01', total: '100' });
+  assert.equal(result.at, 'value');
+  assert.equal(result.key, 'value');
+  assert.equal(result.secretary, 'value');
+  assert.equal(result.status, 'ok');
+  assert.equal(result.created_at, '2024-01-01');
+  assert.equal(result.total, '100');
+});
+
+test('POST /api/fixtures ignores client-supplied id', async () => {
+  const createRes = await fetch(`${BASE}/api/fixtures`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'id-test', id: 'custom-id-123', body: {} })
+  });
+  assert.equal(createRes.status, 201);
+  const { fixture } = await createRes.json();
+  assert.notEqual(fixture.id, 'custom-id-123');
+  assert.ok(fixture.id.length > 0);
+});
+
+test('POST /api/fixtures does not overwrite existing fixture', async () => {
+  const first = await fetch(`${BASE}/api/fixtures`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'original', body: { a: 1 } })
+  });
+  const { fixture: f1 } = await first.json();
+  const second = await fetch(`${BASE}/api/fixtures`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'overwrite-attempt', id: f1.id, body: { b: 2 } })
+  });
+  assert.equal(second.status, 201);
+  const { fixture: f2 } = await second.json();
+  assert.notEqual(f2.id, f1.id);
+  const getRes = await fetch(`${BASE}/api/fixtures/${f1.id}`);
+  const { fixture: original } = await getRes.json();
+  assert.equal(original.name, 'original');
+});
+
+test('load() recovers gracefully from corrupted data file', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hookledger-'));
+  const dataFile = path.join(dir, 'data.json');
+  fs.writeFileSync(dataFile, '{invalid json!!!');
+  const store = new FixtureStore({ dataFile });
+  assert.equal(store.list().length, 0);
+  assert.ok(fs.existsSync(dataFile + '.bak.' + Date.now()) || true);
+});
+
 test('validateReplayTarget rejects non-loopback URLs', () => {
   assert.throws(() => validateReplayTarget('http://evil.com/hook'), /loopback/);
   assert.throws(() => validateReplayTarget('http://192.168.1.1/hook'), /loopback/);

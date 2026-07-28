@@ -31,15 +31,25 @@ export class FixtureStore {
 
   load() {
     if (!this.dataFile || !fs.existsSync(this.dataFile)) return;
-    const data = JSON.parse(fs.readFileSync(this.dataFile, 'utf8') || '{}');
-    this.fixtures = new Map((data.fixtures || []).map((fixture) => [fixture.id, fixture]));
-    this.replays = data.replays || [];
+    try {
+      const data = JSON.parse(fs.readFileSync(this.dataFile, 'utf8') || '{}');
+      this.fixtures = new Map((data.fixtures || []).map((fixture) => [fixture.id, fixture]));
+      this.replays = data.replays || [];
+    } catch (err) {
+      console.error(`Corrupted data file, backing up and starting fresh: ${err.message}`);
+      const backup = this.dataFile + '.bak.' + Date.now();
+      try { fs.copyFileSync(this.dataFile, backup); } catch {}
+      this.fixtures = new Map();
+      this.replays = [];
+    }
   }
 
   persist() {
     if (!this.dataFile) return;
     fs.mkdirSync(path.dirname(this.dataFile), { recursive: true });
-    fs.writeFileSync(this.dataFile, JSON.stringify(this.exportData(), null, 2));
+    const tmp = this.dataFile + '.tmp.' + process.pid;
+    fs.writeFileSync(tmp, JSON.stringify(this.exportData(), null, 2));
+    fs.renameSync(tmp, this.dataFile);
   }
 
   save(input) {
@@ -157,7 +167,10 @@ export function redact(value, debug = false) {
       const normalized = key.toLowerCase().replaceAll('-', '_');
       const isSecret = [...SECRET_KEYS].some(k => {
         const kn = k.replaceAll('-', '_');
-        return normalized === kn || normalized.includes(kn) || kn.includes(normalized);
+        return normalized === kn ||
+          normalized.startsWith(kn + '_') ||
+          normalized.endsWith('_' + kn) ||
+          normalized.includes('_' + kn + '_');
       });
       if (isSecret) {
         return [key, debug ? { value: '[REDACTED]', reason: 'secret-field' } : '[REDACTED]'];
