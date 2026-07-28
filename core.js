@@ -64,7 +64,33 @@ export class FixtureStore {
 
   importFixtures(fixtures) {
     if (!Array.isArray(fixtures)) throw new Error('Import payload must include a fixtures array');
-    return fixtures.map((fixture) => this.save({ ...fixture, id: fixture.id || crypto.randomUUID() }));
+    const warnings = [];
+    const imported = fixtures.map((fixture) => {
+      const id = fixture.id || crypto.randomUUID();
+      if (this.fixtures.has(id)) warnings.push(`Fixture "${fixture.name || id}" overwrites existing ID ${id}`);
+      const name = String(fixture?.name ?? '').trim();
+      if (!name) throw new Error('Fixture name is required');
+      const url = String(fixture?.url ?? '').trim();
+      if (url) validateHttpUrl(url);
+      const method = String(fixture?.method ?? 'POST').toUpperCase();
+      if (!ALLOWED_METHODS.has(method)) throw new Error(`Method must be one of ${[...ALLOWED_METHODS].join(', ')}`);
+      const now = new Date().toISOString();
+      const existing = this.fixtures.get(id);
+      const saved = {
+        id,
+        name,
+        url,
+        method,
+        headers: redact(fixture?.headers ?? {}),
+        body: redact(fixture?.body ?? {}),
+        createdAt: existing?.createdAt || now,
+        updatedAt: now
+      };
+      this.fixtures.set(id, saved);
+      return saved;
+    });
+    this.persist();
+    return { imported, warnings };
   }
 
   list() {

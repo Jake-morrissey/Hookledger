@@ -89,14 +89,15 @@ async function readJson(req) {
   }
 }
 function send(res, status, data, type = 'application/json') {
-  const headers = { 'content-type': type };
+  const body = type === 'application/json' ? JSON.stringify(data) : type === 'text/html' ? data : Buffer.isBuffer(data) ? data : Buffer.from(String(data));
+  const headers = { 'content-type': type, 'content-length': Buffer.byteLength(body) };
   if (type === 'text/html') {
     headers['x-content-type-options'] = 'nosniff';
     headers['x-frame-options'] = 'DENY';
     headers['content-security-policy'] = "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'";
   }
   res.writeHead(status, headers);
-  res.end(type === 'application/json' ? JSON.stringify(data) : data);
+  res.end(body);
 }
 
 const server = http.createServer(async (req, res) => {
@@ -114,7 +115,7 @@ const server = http.createServer(async (req, res) => {
     if (pathname.startsWith('/public/')) {
       const filePath = path.join(__dirname, pathname);
       try {
-        const data = fs.readFileSync(filePath);
+        const data = await fs.promises.readFile(filePath);
         const ext = path.extname(filePath);
         send(res, 200, data, MIME[ext] || 'application/octet-stream');
       } catch { send(res, 404, { error: 'Not found' }); }
@@ -131,27 +132,40 @@ const server = http.createServer(async (req, res) => {
     // API routes
     if (pathname === '/api/fixtures') {
       if (req.method === 'GET') return send(res, 200, { fixtures: store.list() });
-      if (req.method === 'POST') return send(res, 201, { fixture: store.save(await readJson(req)) });
+      if (req.method === 'POST') {
+        if (!req.headers['content-type']?.includes('application/json')) return send(res, 415, { error: 'Content-Type must be application/json' });
+        return send(res, 201, { fixture: store.save(await readJson(req)) });
+      }
     }
     if (pathname.match(/^\/api\/fixtures\/[^/]+$/)) {
       const id = pathname.split('/').pop();
       if (req.method === 'GET') return send(res, 200, { fixture: store.get(id) });
-      if (req.method === 'PUT') { store.get(id); return send(res, 200, { fixture: store.save({ ...await readJson(req), id }) }); }
-      if (req.method === 'PATCH') { const existing = store.get(id); const body = await readJson(req); return send(res, 200, { fixture: store.save({ ...existing, ...body, id }) }); }
+      if (req.method === 'PUT') {
+        if (!req.headers['content-type']?.includes('application/json')) return send(res, 415, { error: 'Content-Type must be application/json' });
+        store.get(id); return send(res, 200, { fixture: store.save({ ...await readJson(req), id }) });
+      }
+      if (req.method === 'PATCH') {
+        if (!req.headers['content-type']?.includes('application/json')) return send(res, 415, { error: 'Content-Type must be application/json' });
+        const existing = store.get(id); const body = await readJson(req); return send(res, 200, { fixture: store.save({ ...existing, ...body, id }) });
+      }
       if (req.method === 'DELETE') return send(res, 200, { deleted: store.delete(id) });
     }
     if (pathname === '/api/history' && req.method === 'GET') return send(res, 200, { history: store.history() });
     if (pathname === '/api/export' && req.method === 'GET') return send(res, 200, store.exportData());
     if (pathname === '/api/import' && req.method === 'POST') {
-      return send(res, 200, { imported: store.importFixtures((await readJson(req)).fixtures) });
+      if (!req.headers['content-type']?.includes('application/json')) return send(res, 415, { error: 'Content-Type must be application/json' });
+      return send(res, 200, store.importFixtures((await readJson(req)).fixtures));
     }
     if (pathname === '/api/redact' && req.method === 'POST') {
+      if (!req.headers['content-type']?.includes('application/json')) return send(res, 415, { error: 'Content-Type must be application/json' });
       return send(res, 200, { redacted: redact(await readJson(req)) });
     }
     if (pathname === '/api/debug/redaction' && req.method === 'POST') {
+      if (!req.headers['content-type']?.includes('application/json')) return send(res, 415, { error: 'Content-Type must be application/json' });
       return send(res, 200, { debug: redact(await readJson(req), true) });
     }
     if (pathname === '/api/replay' && req.method === 'POST') {
+      if (!req.headers['content-type']?.includes('application/json')) return send(res, 415, { error: 'Content-Type must be application/json' });
       const clientIp = req.socket.remoteAddress;
       if (!checkReplayRate(clientIp)) return send(res, 429, { error: 'Too many replay requests. Please wait a moment.' });
       const body = await readJson(req);
@@ -168,8 +182,11 @@ const server = http.createServer(async (req, res) => {
     
     send(res, 404, { error: 'Not found' });
   } catch (error) {
-    const status = error.status || (error.message === 'Fixture not found' ? 404 : 400);
-    send(res, status, { error: error.message });
+    if (error.status || error.message === 'Fixture not found' || error.message.startsWith('Fixture name') || error.message.startsWith('Method must') || error.message.startsWith('Target URL') || error.message.startsWith('Request body') || error.message.startsWith('Invalid JSON') || error.message.startsWith('Import payload')) {
+      return send(res, error.status || (error.message === 'Fixture not found' ? 404 : 400), { error: error.message });
+    }
+    console.error('Unhandled error:', error);
+    send(res, 500, { error: 'Internal server error' });
   }
 });
 

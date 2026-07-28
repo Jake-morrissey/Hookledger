@@ -47,10 +47,20 @@ test('persists fixtures and replay history to disk', () => {
 
 test('imports and exports fixtures', () => {
   const store = new FixtureStore();
-  const imported = store.importFixtures([{ name: 'imported', url: 'http://localhost:3001/hook', headers: { token: 'secret' }, body: { ok: true } }]);
+  const { imported, warnings } = store.importFixtures([{ name: 'imported', url: 'http://localhost:3001/hook', headers: { token: 'secret' }, body: { ok: true } }]);
   assert.equal(imported.length, 1);
+  assert.ok(Array.isArray(warnings));
   assert.equal(store.exportData().product, 'HookLedger');
   assert.equal(store.exportData().fixtures[0].headers.token, '[REDACTED]');
+});
+
+test('importFixtures returns warnings for duplicate IDs', () => {
+  const store = new FixtureStore();
+  store.save({ name: 'original', url: 'http://localhost:3001/hook', body: {} });
+  const fixture = store.list()[0];
+  const { warnings } = store.importFixtures([{ id: fixture.id, name: 'dupe', url: 'http://localhost:3001/hook', body: {} }]);
+  assert.ok(warnings.length > 0);
+  assert.match(warnings[0], /overwrites existing/);
 });
 
 test('replays fixture through injected fetch implementation', async () => {
@@ -149,7 +159,7 @@ function fetch(url, options = {}) {
     const req = http.request({ hostname: parsed.hostname, port: parsed.port, path: parsed.pathname + parsed.search, method: options.method || 'GET', headers: options.headers || {} }, (res) => {
       let body = '';
       res.on('data', (c) => body += c);
-      res.on('end', () => resolve({ status: res.statusCode, ok: res.statusCode < 400, json: () => JSON.parse(body || '{}'), text: () => body }));
+      res.on('end', () => resolve({ status: res.statusCode, ok: res.statusCode < 400, headers: res.headers, json: () => JSON.parse(body || '{}'), text: () => body }));
     });
     if (options.body) req.write(options.body);
     req.on('error', reject);
@@ -309,9 +319,10 @@ test('POST /api/import imports fixtures', async () => {
     body: JSON.stringify({ fixtures: [{ name: 'imported-via-test', url: 'http://localhost:3001/hook', body: { ok: true } }] })
   });
   assert.equal(res.status, 200);
-  const { imported } = await res.json();
+  const { imported, warnings } = await res.json();
   assert.equal(imported.length, 1);
   assert.equal(imported[0].name, 'imported-via-test');
+  assert.ok(Array.isArray(warnings));
 });
 
 test('POST /api/redact returns redacted payload', async () => {
@@ -353,5 +364,66 @@ test('GET /api/history returns array', async () => {
 
 test('unknown route returns 404', async () => {
   const res = await fetch(`${BASE}/nonexistent`);
+  assert.equal(res.status, 404);
+});
+
+test('POST /api/fixtures with wrong Content-Type returns 415', async () => {
+  const res = await fetch(`${BASE}/api/fixtures`, {
+    method: 'POST',
+    headers: { 'content-type': 'text/plain' },
+    body: JSON.stringify({ name: 'test', body: {} })
+  });
+  assert.equal(res.status, 415);
+  const body = await res.json();
+  assert.match(body.error, /Content-Type must be application\/json/);
+});
+
+test('PUT /api/fixtures/:id with wrong Content-Type returns 415', async () => {
+  const res = await fetch(`${BASE}/api/fixtures/nonexistent-id`, {
+    method: 'PUT',
+    headers: { 'content-type': 'text/plain' },
+    body: JSON.stringify({ name: 'test', body: {} })
+  });
+  assert.equal(res.status, 415);
+});
+
+test('PATCH /api/fixtures/:id with wrong Content-Type returns 415', async () => {
+  const res = await fetch(`${BASE}/api/fixtures/nonexistent-id`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'text/plain' },
+    body: JSON.stringify({ name: 'test' })
+  });
+  assert.equal(res.status, 415);
+});
+
+test('POST /api/replay with wrong Content-Type returns 415', async () => {
+  const res = await fetch(`${BASE}/api/replay`, {
+    method: 'POST',
+    headers: { 'content-type': 'text/plain' },
+    body: JSON.stringify({ id: 'test' })
+  });
+  assert.equal(res.status, 415);
+});
+
+test('responses include Content-Length header', async () => {
+  const res = await fetch(`${BASE}/`);
+  assert.ok(res.headers['content-length'] !== undefined);
+  assert.ok(Number(res.headers['content-length']) > 0);
+});
+
+test('GET /public/style.css returns correct MIME type', async () => {
+  const res = await fetch(`${BASE}/public/style.css`);
+  assert.equal(res.status, 200);
+  assert.ok(res.headers['content-type'].includes('text/css'));
+});
+
+test('GET /public/app.js returns correct MIME type', async () => {
+  const res = await fetch(`${BASE}/public/app.js`);
+  assert.equal(res.status, 200);
+  assert.ok(res.headers['content-type'].includes('application/javascript'));
+});
+
+test('GET nonexistent static file returns 404', async () => {
+  const res = await fetch(`${BASE}/public/nope.xyz`);
   assert.equal(res.status, 404);
 });
