@@ -116,6 +116,28 @@ test('redact does not over-match short or unrelated field names', () => {
   assert.equal(result.total, '100');
 });
 
+test('redact redacts prefixed secret-key fields like secret_key, token_value, api_key_2', () => {
+  const result = redact({ secret_key: 's', token_value: 't', api_key_2: 'k', my_secret: 'm' });
+  assert.equal(result.secret_key, '[REDACTED]');
+  assert.equal(result.token_value, '[REDACTED]');
+  assert.equal(result.api_key_2, '[REDACTED]');
+  assert.equal(result.my_secret, '[REDACTED]');
+});
+
+test('redact does not redact known-safe compound fields like token_type, cookie_settings', () => {
+  const result = redact({ token_type: 'Bearer', cookie_settings: 'lax', cookie_name: 'session', cookie_path: '/', cookie_domain: 'example.com', cookie_secure: 'true', cookie_httponly: 'true', cookie_samesite: 'lax', cookie_maxage: '3600', token_use: 'access' });
+  assert.equal(result.token_type, 'Bearer');
+  assert.equal(result.cookie_settings, 'lax');
+  assert.equal(result.cookie_name, 'session');
+  assert.equal(result.cookie_path, '/');
+  assert.equal(result.cookie_domain, 'example.com');
+  assert.equal(result.cookie_secure, 'true');
+  assert.equal(result.cookie_httponly, 'true');
+  assert.equal(result.cookie_samesite, 'lax');
+  assert.equal(result.cookie_maxage, '3600');
+  assert.equal(result.token_use, 'access');
+});
+
 test('save stores real values, list returns redacted copies', () => {
   const store = new FixtureStore();
   store.save({ name: 'test', url: 'http://localhost:3001/hook', headers: { 'authorization': 'Bearer real-token', 'content-type': 'application/json' }, body: { secret: 'abc', public: 'xyz' } });

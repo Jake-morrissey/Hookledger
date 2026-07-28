@@ -21,6 +21,19 @@ const SECRET_KEYS = new Set([
 
 const ALLOWED_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
+const SAFE_COMPOUND_FIELDS = new Set([
+  'token_type',
+  'token_use',
+  'cookie_settings',
+  'cookie_name',
+  'cookie_path',
+  'cookie_domain',
+  'cookie_httponly',
+  'cookie_secure',
+  'cookie_samesite',
+  'cookie_maxage'
+]);
+
 export class FixtureStore {
   constructor(options = {}) {
     this.dataFile = options.dataFile || null;
@@ -138,8 +151,9 @@ export class FixtureStore {
       written.add(f.id);
       this.fixtures.set(f.id, f);
     }
+    const writtenFixtures = validated.filter(f => written.has(f.id));
     this.persist();
-    return { imported: validated, warnings };
+    return { imported: writtenFixtures, warnings };
   }
 
   list() {
@@ -222,6 +236,7 @@ export function redact(value, debug = false) {
       const normalized = key.toLowerCase().replaceAll('-', '_');
       const isSecret = secretKeys.some(kn => {
         return normalized === kn ||
+          (normalized.startsWith(kn + '_') && !SAFE_COMPOUND_FIELDS.has(normalized)) ||
           normalized.endsWith('_' + kn) ||
           normalized.includes('_' + kn + '_');
       });
