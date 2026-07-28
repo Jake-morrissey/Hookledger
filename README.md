@@ -9,8 +9,8 @@ HookLedger is a fully localhosted, free and open-source developer tool for testi
 Requires **Node.js >= 18**.
 
 ```bash
-git clone https://github.com/Jake-morrissey/WebHook.git
-cd WebHook
+git clone https://github.com/Jake-morrissey/HookLedger.git
+cd HookLedger
 npm install
 npm start
 ```
@@ -58,6 +58,7 @@ npm test
 | `GET` | `/api/fixtures` | List all fixtures |
 | `POST` | `/api/fixtures` | Create or update a fixture |
 | `GET` | `/api/fixtures/:id` | Get a single fixture |
+| `PUT` | `/api/fixtures/:id` | Update an existing fixture |
 | `DELETE` | `/api/fixtures/:id` | Delete a fixture |
 | `GET` | `/api/history` | Get replay history |
 | `GET` | `/api/export` | Export all fixtures as JSON |

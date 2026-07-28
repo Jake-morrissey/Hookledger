@@ -132,6 +132,7 @@ export async function replayFixture(fixture, targetUrl = fixture.url, fetchImpl 
   if (!targetUrl) throw new Error('Target URL is required');
   validateHttpUrl(targetUrl);
   
+  const start = Date.now();
   try {
     const response = await fetchImpl(targetUrl, {
       method: fixture.method || 'POST',
@@ -145,6 +146,7 @@ export async function replayFixture(fixture, targetUrl = fixture.url, fetchImpl 
       ok: response.ok, 
       body: truncated ? text.slice(0, 5000) : text,
       truncated,
+      durationMs: Date.now() - start,
       error: null
     };
   } catch (err) {
@@ -155,6 +157,7 @@ export async function replayFixture(fixture, targetUrl = fixture.url, fetchImpl 
       status: null, 
       ok: false, 
       body: null,
+      durationMs: Date.now() - start,
       error: errorMsg
     };
   }

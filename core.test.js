@@ -62,6 +62,8 @@ test('replays fixture through injected fetch implementation', async () => {
   const result = await replayFixture({ method: 'POST', headers: { 'x-test': '1' }, body: { event: 'demo' }, url: 'http://example.test/hook' }, undefined, fakeFetch);
   assert.equal(result.status, 202);
   assert.equal(result.body, 'accepted');
+  assert.equal(typeof result.durationMs, 'number');
+  assert.ok(result.durationMs >= 0);
   assert.equal(calls[0].url, 'http://example.test/hook');
   assert.equal(JSON.parse(calls[0].options.body).event, 'demo');
 });
@@ -73,6 +75,7 @@ test('handles replay connection errors gracefully', async () => {
   const result = await replayFixture({ method: 'POST', url: 'http://example.test/hook' }, undefined, fakeFetch);
   assert.equal(result.ok, false);
   assert.equal(result.status, null);
+  assert.equal(typeof result.durationMs, 'number');
   assert.match(result.error, /Connection failed/);
 });
 
@@ -176,7 +179,13 @@ test('GET / returns HTML', async () => {
 test('GET /workspace returns workspace page', async () => {
   const res = await fetch(`${BASE}/workspace`);
   assert.equal(res.status, 200);
-  assert.match(res.text(), /HookLedger fixture lab/);
+  const html = res.text();
+  assert.match(html, /HookLedger fixture lab/);
+  assert.match(html, /searchInput/);
+  assert.match(html, /responseModal/);
+  assert.match(html, /filterFixtures/);
+  assert.match(html, /editFixture/);
+  assert.match(html, /viewResponse/);
 });
 
 test('POST /api/fixtures creates and GET /api/fixtures/:id retrieves', async () => {
@@ -209,6 +218,85 @@ test('DELETE /api/fixtures/:id deletes fixture', async () => {
   assert.equal(delRes.status, 200);
   const { deleted } = await delRes.json();
   assert.equal(deleted, true);
+});
+
+test('PUT /api/fixtures/:id updates fixture', async () => {
+  const createRes = await fetch(`${BASE}/api/fixtures`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'to-update', url: 'http://localhost:3001/hook', body: { a: 1 } })
+  });
+  const { fixture } = await createRes.json();
+  const putRes = await fetch(`${BASE}/api/fixtures/${fixture.id}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'updated-name', url: 'http://localhost:3002/hook', method: 'PATCH', body: { b: 2 } })
+  });
+  assert.equal(putRes.status, 200);
+  const { fixture: updated } = await putRes.json();
+  assert.equal(updated.name, 'updated-name');
+  assert.equal(updated.method, 'PATCH');
+  assert.equal(updated.id, fixture.id);
+});
+
+test('PUT /api/fixtures/:id returns 404 for nonexistent', async () => {
+  const res = await fetch(`${BASE}/api/fixtures/nonexistent-id-99999`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'x', body: {} })
+  });
+  assert.equal(res.status, 404);
+});
+
+test('GET /api/export returns valid export payload', async () => {
+  const res = await fetch(`${BASE}/api/export`);
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.equal(data.product, 'HookLedger');
+  assert.ok(Array.isArray(data.fixtures));
+  assert.ok(Array.isArray(data.replays));
+});
+
+test('POST /api/import imports fixtures', async () => {
+  const res = await fetch(`${BASE}/api/import`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ fixtures: [{ name: 'imported-via-test', url: 'http://localhost:3001/hook', body: { ok: true } }] })
+  });
+  assert.equal(res.status, 200);
+  const { imported } = await res.json();
+  assert.equal(imported.length, 1);
+  assert.equal(imported[0].name, 'imported-via-test');
+});
+
+test('POST /api/redact returns redacted payload', async () => {
+  const res = await fetch(`${BASE}/api/redact`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'test', headers: { authorization: 'Bearer secret' } })
+  });
+  assert.equal(res.status, 200);
+  const { redacted } = await res.json();
+  assert.equal(redacted.headers.authorization, '[REDACTED]');
+  assert.equal(redacted.name, 'test');
+});
+
+test('POST /api/replay returns 429 after exceeding rate limit', async () => {
+  for (let i = 0; i < 11; i++) {
+    await fetch(`${BASE}/api/replay`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: 'nonexistent-replay-target' })
+    });
+  }
+  const res = await fetch(`${BASE}/api/replay`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ id: 'nonexistent-replay-target' })
+  });
+  assert.equal(res.status, 429);
+  const body = await res.json();
+  assert.match(body.error, /Too many/);
 });
 
 test('GET /api/history returns array', async () => {

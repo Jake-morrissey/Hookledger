@@ -7,12 +7,25 @@
 - Added graceful shutdown handler (SIGTERM/SIGINT) to persist data before exit.
 - Added `engines` field requiring Node.js >= 18.
 - Added GET /api/fixtures/:id endpoint for fetching a single fixture.
+- Added PUT /api/fixtures/:id endpoint for updating existing fixtures.
+- Added rate limiting on POST /api/replay (10 requests per minute per IP).
+- Fixed XSS: all fixture data in workspace UI now escaped with escapeHtml.
+- Replaced inline onclick handlers with data-attribute event delegation for security.
+- Added server-side escapeHtml helper for defense-in-depth.
 - Added security headers (CSP, X-Content-Type-Options, X-Frame-Options) to HTML responses.
 - Added truncation indicator when replay response body exceeds 5000 chars.
 - Fixed FixtureStore.delete() to skip disk write when fixture ID doesn't exist.
 - Renamed /pricing route to /support to match its label.
 - Removed hardcoded "0 external accounts" metric card from workspace UI.
-- Documented Node.js version requirement in README.
+- Normalized all product references to "HookLedger" across README, package.json, and docs.
+- Added replay duration tracking (durationMs) in response and history.
+- Added search/filter for fixtures list in workspace.
+- Added inline fixture editing (Edit button pre-fills the create form).
+- Added confirmation dialog before replaying fixtures.
+- Added replay history panel with status badges, duration, and truncation indicators.
+- Added response body viewer modal for replay history entries.
+- Refactored workspace script from minified single-line to readable multi-line.
+- Added tests for durationMs, workspace UI elements, export, import, and redact endpoints.
 
 ## 0.5.0 - 2026-07-26
 
