@@ -59,6 +59,7 @@ npm test
 | `POST` | `/api/fixtures` | Create or update a fixture |
 | `GET` | `/api/fixtures/:id` | Get a single fixture |
 | `PUT` | `/api/fixtures/:id` | Update an existing fixture |
+| `PATCH` | `/api/fixtures/:id` | Partially update an existing fixture |
 | `DELETE` | `/api/fixtures/:id` | Delete a fixture |
 | `GET` | `/api/history` | Get replay history |
 | `GET` | `/api/export` | Export all fixtures as JSON |
