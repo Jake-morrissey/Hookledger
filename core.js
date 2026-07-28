@@ -146,12 +146,13 @@ export class FixtureStore {
       };
     });
     const written = new Set();
+    const writtenFixtures = [];
     for (const f of validated) {
       if (written.has(f.id)) continue;
       written.add(f.id);
       this.fixtures.set(f.id, f);
+      writtenFixtures.push(f);
     }
-    const writtenFixtures = validated.filter(f => written.has(f.id));
     this.persist();
     return { imported: writtenFixtures, warnings };
   }

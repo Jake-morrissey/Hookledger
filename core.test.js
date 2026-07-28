@@ -64,6 +64,19 @@ test('importFixtures returns warnings for duplicate IDs', () => {
   assert.match(warnings[0], /overwrites existing/);
 });
 
+test('importFixtures counts only first-wins for intra-batch duplicate ids', () => {
+  const store = new FixtureStore();
+  const { imported, warnings } = store.importFixtures([
+    { id: 'dupX', name: 'first', url: 'http://localhost:3001/hook', body: {} },
+    { id: 'dupX', name: 'second', url: 'http://localhost:3001/hook', body: {} }
+  ]);
+  assert.equal(imported.length, 1, 'should report exactly 1 fixture imported');
+  assert.equal(imported[0].name, 'first', 'should keep the first entry');
+  assert.equal(store.list().length, 1, 'should have exactly 1 fixture in store');
+  assert.equal(store.list()[0].name, 'first');
+  assert.ok(warnings.some(w => w.includes('duplicate')), 'should warn about duplicate');
+});
+
 test('replays fixture through injected fetch implementation', async () => {
   const calls = [];
   const fakeFetch = async (url, options) => {
