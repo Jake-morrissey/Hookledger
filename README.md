@@ -46,6 +46,9 @@ npm test
 - Replay fixtures against any local HTTP endpoint (loopback-only for safety).
 - Import and export fixtures as JSON.
 - Replay history with response status and body.
+- Build multi-event **sequences** from existing fixtures and replay them with configurable timing.
+- **Record** a real webhook sequence by pointing a provider at an ingest URL, then replay it.
+- Optional per-step **assertions** that poll a local endpoint for a JSON-path value between events.
 - File-backed persistence at `data/hookledger.json` (git-ignored).
 
 ## Pages
@@ -73,6 +76,18 @@ npm test
 | `POST` | `/api/import` | Import fixtures from JSON |
 | `POST` | `/api/redact` | Preview redaction (dry-run) |
 | `POST` | `/api/replay` | Replay a fixture to a local endpoint (loopback only) |
+| `GET` | `/api/sequences` | List sequences |
+| `POST` | `/api/sequences` | Create a sequence (ordered references to existing fixtures) |
+| `GET` | `/api/sequences/:id` | Get a sequence |
+| `PUT` | `/api/sequences/:id` | Update a sequence |
+| `PATCH` | `/api/sequences/:id` | Partially update a sequence |
+| `DELETE` | `/api/sequences/:id` | Delete a sequence |
+| `POST` | `/api/sequences/:id/replay` | Replay a sequence (`timingMode`: `compressed`, `fixed-delay`, `as-recorded`, `overlap`, `accelerated`) |
+| `GET` | `/api/sequence-runs` | List sequence run history |
+| `POST` | `/api/sequences/:id/record/start` | Start a recording session; returns an ingest URL |
+| `POST` | `/api/record/:sessionId` | Capture an inbound webhook event into the active session |
+| `GET` | `/api/record/:sessionId` | Live event count for an active recording session |
+| `POST` | `/api/sequences/:id/record/stop` | Finalize recording into fixtures + sequence steps |
 
 ## Guardrails
 

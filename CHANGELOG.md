@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.10.0 - 2026-08-02
+
+Fixture Sequences — replay multi-event flows, record real webhook sequences, assert on state between events, and fuzz timing for race-condition testing.
+
+- **New "Sequences" tab** in the Workspace: build a sequence by ordering existing fixtures, set per-step delays, run it, and view results inline.
+- **New API:** `GET/POST /api/sequences`, `GET/PUT/PATCH/DELETE /api/sequences/:id`, `POST /api/sequences/:id/replay`, `GET /api/sequence-runs`.
+- **Timing modes:** `compressed` (back-to-back), `fixed-delay`, `as-recorded` (real captured deltas), `overlap` (concurrent fire within a jitter window for race testing), `accelerated` (Nx recorded speed, relative order kept).
+- **Recording mode:** `record/start` returns an ingest URL; `POST /api/record/:sessionId` captures real webhook events; `record/stop` converts captures into fixtures via the normal redacting save path and records inter-arrival deltas as step delays.
+- **Optional per-step assertions** (`url` + JSON path + expected value + timeout/poll interval): after each step the sequence polls the target (loopback-only via the existing SSRF guard) and records pass/fail with the last observed value.
+- **Security:** single-fixture endpoints (`GET/POST /api/fixtures`, `GET/PUT/PATCH /api/fixtures/:id`) now return redacted secrets, consistent with list/export. Editing a fixture shows `[REDACTED]` for secret fields, and `PUT`/`PATCH` preserve the stored secret on save so replay still sends real values.
+- Added regression coverage for loopback-bypass hostname checks on `validateReplayTarget`.
+
 ## 0.9.0 - 2026-07-28
 
 - **Critical fix: replay now sends real secret values instead of `[REDACTED]`.** Previously, `save()` called `redact()` which permanently overwrote real header/body values with the literal string `[REDACTED]` in storage. Every subsequent replay sent the placeholder instead of the real signature/token. Now: `save()` stores real values; `list()` and `exportData()` return redacted copies for display; `get()` returns real values for replay and edit. Replaying a fixture with a real `stripe-signature` now works correctly.
